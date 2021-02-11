@@ -1,0 +1,51 @@
+CREATE TABLE tblCustomerType
+(
+	CustomerTypeID INT IDENTITY(1,1) PRIMARY KEY,
+	CustomerTypeName VARCHAR(50),
+	CustomerTypeDesc VARCHAR(1000)
+)
+GO
+
+CREATE TABLE tblSupplier
+(
+	SupplierID INT IDENTITY(1,1) PRIMARY KEY,
+	SupplierName VARCHAR(50),
+	SupplierDesc VARCHAR(1000),
+	City INT FOREIGN KEY REFERENCES tblCITY(CityID)
+)
+GO
+
+CREATE TABLE tblProduct
+(
+	ProductID INT IDENTITY(1,1) PRIMARY KEY,
+	ProductName VARCHAR(50),
+	ProductDesc VARCHAR(100),
+	SupplierID INT FOREIGN KEY REFERENCES tblSupplier(SupplierID)
+)
+GO
+
+CREATE TABLE tblOrder_Product
+(
+	Order_ProductID INT IDENTITY(1,1) PRIMARY KEY,
+	ProductID INT FOREIGN KEY REFERENCES tblProduct(ProductID),
+	OrderID INT FOREIGN KEY REFERENCES tblORDER(OrderID),
+	Quantity INT
+)
+GO
+
+CREATE TABLE tblDetail
+(
+	DetailID INT IDENTITY(1,1) PRIMARY KEY,
+	DetailName VARCHAR(50),
+	DetailDesc VARCHAR(1000)
+)
+GO
+
+CREATE TABLE tblProductDetail
+(
+	ProductDetailID INT IDENTITY(1,1) PRIMARY KEY,
+	ProductID INT FOREIGN KEY REFERENCES tblProduct(ProductID),
+	DetailID INT FOREIGN KEY REFERENCES tblDetail(DetailID),
+	Value VARCHAR(1000)
+)
+GO
