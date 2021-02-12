@@ -1,4 +1,4 @@
-CREATE TABLE tblCustomerType
+CREATE TABLE tblCUSTOMER_TYPE
 (
 	CustomerTypeID INT IDENTITY(1,1) PRIMARY KEY,
 	CustomerTypeName VARCHAR(50),
@@ -6,7 +6,7 @@ CREATE TABLE tblCustomerType
 )
 GO
 
-CREATE TABLE tblSupplier
+CREATE TABLE tblSUPPLIER
 (
 	SupplierID INT IDENTITY(1,1) PRIMARY KEY,
 	SupplierName VARCHAR(50),
@@ -15,7 +15,7 @@ CREATE TABLE tblSupplier
 )
 GO
 
-CREATE TABLE tblProduct
+CREATE TABLE tblPRODUCT
 (
 	ProductID INT IDENTITY(1,1) PRIMARY KEY,
 	ProductName VARCHAR(50),
@@ -24,7 +24,7 @@ CREATE TABLE tblProduct
 )
 GO
 
-CREATE TABLE tblOrder_Product
+CREATE TABLE tblORDER_PRODUCT
 (
 	Order_ProductID INT IDENTITY(1,1) PRIMARY KEY,
 	ProductID INT FOREIGN KEY REFERENCES tblProduct(ProductID),
@@ -33,7 +33,7 @@ CREATE TABLE tblOrder_Product
 )
 GO
 
-CREATE TABLE tblDetail
+CREATE TABLE tblDETAIL
 (
 	DetailID INT IDENTITY(1,1) PRIMARY KEY,
 	DetailName VARCHAR(50),
@@ -41,7 +41,7 @@ CREATE TABLE tblDetail
 )
 GO
 
-CREATE TABLE tblProductDetail
+CREATE TABLE tblPRODUCT_DETAIL
 (
 	ProductDetailID INT IDENTITY(1,1) PRIMARY KEY,
 	ProductID INT FOREIGN KEY REFERENCES tblProduct(ProductID),
