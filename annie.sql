@@ -6,7 +6,7 @@ CREATE TABLE tblSHIPMENT_TYPE
 );
 GO
 
-CREATE TABLE tblCARRIER
+CREATE TABLE tblCARRIER     --with FK
 (
     CarrierID INTEGER IDENTITY(1,1) PRIMARY KEY,
     CarrierName VARCHAR(50) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE tblCARRIER
 );
 GO
 
-CREATE TABLE tblSHIPMENT
+CREATE TABLE tblSHIPMENT     --with FK
 (
     ShipmentID INTEGER IDENTITY(1,1) PRIMARY KEY,
     TrackingNumber VARCHAR(50) NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE tblSHIPMENT
 );
 GO
 
-CREATE TABLE tblPACKAGE
+CREATE TABLE tblPACKAGE     --with FK
 (
     PackageID INTEGER IDENTITY(1,1) PRIMARY KEY,
     Order_ProductID INTEGER FOREIGN KEY REFERENCES tblORDER_PRODUCT(Order_ProductID),
@@ -40,7 +40,7 @@ CREATE TABLE tblEMPLOYEE_TYPE
 );
 GO
 
-CREATE TABLE tblEMPLOYEE
+CREATE TABLE tblEMPLOYEE     --with FK
 (
     EmployeeID INTEGER IDENTITY(1,1) PRIMARY KEY,
     EmployeeFName VARCHAR(50) NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE tblEMPLOYEE
 );
 GO
 
-CREATE TABLE tblORDER
+CREATE TABLE tblORDER     --with FK
 (
     OrderID INTEGER IDENTITY(1,1) PRIMARY KEY,
     OrderDate VARCHAR(50) NOT NULL,
@@ -58,3 +58,30 @@ CREATE TABLE tblORDER
     EmployeeID INTEGER FOREIGN KEY REFERENCES tblEMPLOYEE(EmployeeID),
 );
 GO
+
+-------------------------- Get ID Sproc --------------------------------------
+CREATE PROCEDURE GetShipmentTypeID
+@ST_Name VARCHAR(50),
+@ST_ID INT OUTPUT 
+AS 
+IF @ST_Name IS NULL
+    THROW 50001, 'ShipmentTypeName is null', 1; 
+SET @ST_ID = (
+    SELECT ShipmentTypeID
+    FROM tblSHIPMENT_TYPE 
+    WHERE ShipmentTypeName = @ST_Name
+)
+GO 
+
+CREATE PROCEDURE GetEmployeeTypeID
+@ET_Name VARCHAR(50),
+@ET_ID INT OUTPUT 
+AS 
+IF @ET_Name IS NULL
+    THROW 50002, 'EmployeeTypeName is null', 1; 
+SET @ET_ID = (
+    SELECT EmployeeTypeID
+    FROM tblEMPLOYEE_TYPE 
+    WHERE EmployeeTypeName = @ET_Name
+)
+GO 
