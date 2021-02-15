@@ -53,3 +53,65 @@ CREATE TABLE tblPACKAGE
     ShipmentID INTEGER FOREIGN KEY REFERENCES tblSHIPMENT(ShipmentID)
 );
 GO
+
+CREATE PROCEDURE GetStateID
+@S_Name VARCHAR(50),
+@S_ID INT OUTPUT
+AS
+SET @S_ID = (SELECT StateID FROM tblSTATE WHERE StateName = @S_Name)
+GO
+
+CREATE PROCEDURE GetCityID
+@C_Name VARCHAR(50),
+@C_ID INT OUTPUT
+AS
+SET @C_ID = (SELECT CityID FROM tblCITY WHERE CityName = @C_Name)
+GO
+
+
+CREATE PROCEDURE GetAddressID
+@A_Line1 VARCHAR(100),
+@A_Line2 VARCHAR(100),
+@A_Zip VARCHAR(5),
+@A_CityName VARCHAR(50),
+@A_StateName VARCHAR(50),
+@A_ID INT OUTPUT
+AS
+DECLARE @CityID INT, @StateID INT
+
+EXEC GetCityID 
+@C_Name = @A_CityName,
+@C_ID = @CityID
+
+EXEC GetStateID 
+@S_Name = @A_StateName,
+@S_ID = @StateID
+
+SET @A_ID = (
+    SELECT AddressID 
+    FROM tblADDRESS 
+    WHERE AddressLine1 = @A_Line1
+        AND AddressLine2 = @A_Line2
+        AND Zip = @A_Zip
+        AND CityID = @CityID 
+        AND StateID = @StateID 
+)
+GO
+
+CREATE PROCEDURE GetPriorityID 
+@P_Name VARCHAR(50),
+@P_ID INT OUTPUT 
+AS
+SET @P_ID = (SELECT PriorityID FROM tblPRIORITY WHERE PriorityName = @P_Name)
+GO
+
+-- CREATE PROCEDURE GetCustomerID
+-- @C_Fname VARCHAR(50),
+-- @C_Lname VARCHAR(50),
+-- @C_DOB DATE,
+-- @C_Email VARCHAR(50),
+-- @C_
+-- AS
+-- DECLARE @AddressID INT, @PriorityID INT, @CustomerTypeID INT
+
+
