@@ -1,0 +1,77 @@
+CREATE TABLE tblCUSTOMER_TYPE
+(
+	CustomerTypeID INT IDENTITY(1,1) PRIMARY KEY,
+	CustomerTypeName VARCHAR(50),
+	CustomerTypeDesc VARCHAR(1000)
+)
+GO
+
+CREATE TABLE tblSUPPLIER
+(
+	SupplierID INT IDENTITY(1,1) PRIMARY KEY,
+	SupplierName VARCHAR(50),
+	SupplierDesc VARCHAR(1000),
+	City INT FOREIGN KEY REFERENCES tblCITY(CityID)
+)
+GO
+
+CREATE TABLE tblPRODUCT
+(
+	ProductID INT IDENTITY(1,1) PRIMARY KEY,
+	ProductName VARCHAR(50),
+	ProductDesc VARCHAR(100),
+	SupplierID INT FOREIGN KEY REFERENCES tblSupplier(SupplierID)
+)
+GO
+
+CREATE TABLE tblORDER_PRODUCT
+(
+	Order_ProductID INT IDENTITY(1,1) PRIMARY KEY,
+	ProductID INT FOREIGN KEY REFERENCES tblProduct(ProductID),
+	OrderID INT FOREIGN KEY REFERENCES tblORDER(OrderID),
+	Quantity INT
+)
+GO
+
+CREATE TABLE tblDETAIL
+(
+	DetailID INT IDENTITY(1,1) PRIMARY KEY,
+	DetailName VARCHAR(50),
+	DetailDesc VARCHAR(1000)
+)
+GO
+
+CREATE TABLE tblPRODUCT_DETAIL
+(
+	ProductDetailID INT IDENTITY(1,1) PRIMARY KEY,
+	ProductID INT FOREIGN KEY REFERENCES tblProduct(ProductID),
+	DetailID INT FOREIGN KEY REFERENCES tblDetail(DetailID),
+	Value VARCHAR(1000)
+)
+GO
+
+CREATE PROCEDURE GetCustomerTypeID
+@_Name VARCHAR(50),
+@_Out INT OUTPUT
+AS
+IF @_Name IS NULL
+	THROW 50011, '_Name is null', 1;
+SET @_Out = (
+	SELECT CustomerTypeID
+	FROM tblCUSTOMER_TYPE
+	WHERE CustomerTypeName = @_Name
+)
+GO
+
+CREATE PROCEDURE GetDetailID
+@_Name VARCHAR(50),
+@_Out INT OUTPUT
+AS
+IF @_Name IS NULL
+	THROW 50011, '_Name is null', 1;
+SET @_Out = (
+	SELECT DetailID
+	FROM tblDETAIL
+	WHERE DetailName = @_Name
+)
+GO
