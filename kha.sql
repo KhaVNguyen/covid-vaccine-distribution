@@ -68,7 +68,6 @@ AS
 SET @C_ID = (SELECT CityID FROM tblCITY WHERE CityName = @C_Name)
 GO
 
-
 CREATE PROCEDURE GetAddressID
 @A_Line1 VARCHAR(100),
 @A_Line2 VARCHAR(100),
@@ -105,6 +104,7 @@ AS
 SET @P_ID = (SELECT PriorityID FROM tblPRIORITY WHERE PriorityName = @P_Name)
 GO
 
+/* needs to hook up with other people's code */
 -- CREATE PROCEDURE GetCustomerID
 -- @C_Fname VARCHAR(50),
 -- @C_Lname VARCHAR(50),
@@ -115,3 +115,73 @@ GO
 -- DECLARE @AddressID INT, @PriorityID INT, @CustomerTypeID INT
 
 
+
+/* Data Inserting Procedures */
+CREATE PROCEDURE 
+CreateNewAddress
+@AddressLine1 VARCHAR(100),
+@AddressLine2 VARCHAR(100),
+@Zip VARCHAR(5),
+@CityName INTEGER,
+@StateName INTEGER
+AS
+BEGIN
+
+DECLARE @CityID INT, @StateID INT
+
+EXEC GetCityID 
+@C_Name = @CityName,
+@C_ID = @CityID
+IF @CityID IS NULL 
+    THROW 55000, 'City does not exist', 1
+
+EXEC GetStateID 
+@S_Name = @StateName,
+@S_ID = @StateID
+IF @StateID IS NULL
+    THROW 55001, 'State does not exist', 1
+
+IF (SELECT StateID FROM tblCITY WHERE CityID = @CityID) <> @StateID
+    THROW 55002, 'This city is not in this state', 1
+
+INSERT INTO tblADDRESS(AddressLine1, AddressLine2, Zip, CityID, StateID)
+VALUES (@AddressLine1, @AddressLine2, @Zip, @CityID, @StateID)
+
+END 
+GO
+
+CREATE PROCEDURE 
+PopulateAddresses
+@NumberOfAddresses INTEGER
+AS
+BEGIN
+DECLARE @Run INT = 1
+WHILE @Run <= @NumberOfAddresses
+    BEGIN
+    -- get a random city
+    DECLARE @RandomCityID INTEGER = FLOOR(RAND() * ((SELECT COUNT(*) FROM tblCITY)) + 1)
+    DECLARE @RandomCityName VARCHAR(100) = (
+        SELECT TOP 1 CityName 
+        FROM tblCITY
+        WHERE CityID = @RandomCityID
+    )
+
+    -- get the state associated with that city
+    DECLARE @RandomStateName VARCHAR(100) = (
+        SELECT StateName
+        FROM tblSTATE
+        WHERE StateID = (SELECT StateID FROM tblCITY WHERE CityID = @RandomCityID)
+    )
+
+    EXEC CreateNewAddress
+    @AddressLine1  = 'Random address line 1',
+    @AddressLine2 = 'Random address line 2',
+    @Zip = '00000',
+    @CityName = @RandomCityName,
+    @StateName = @RandomStateName
+
+    SET @Run = @Run + 1
+    
+    END
+END
+GO
