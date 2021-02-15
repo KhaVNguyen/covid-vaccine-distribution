@@ -49,3 +49,29 @@ CREATE TABLE tblPRODUCT_DETAIL
 	Value VARCHAR(1000)
 )
 GO
+
+CREATE PROCEDURE GetCustomerTypeID
+@_Name VARCHAR(50),
+@_Out INT OUTPUT
+AS
+IF @_Name IS NULL
+	THROW 50011, '_Name is null', 1;
+SET @_Out = (
+	SELECT CustomerTypeID
+	FROM tblCUSTOMER_TYPE
+	WHERE CustomerTypeName = @_Name
+)
+GO
+
+CREATE PROCEDURE GetDetailID
+@_Name VARCHAR(50),
+@_Out INT OUTPUT
+AS
+IF @_Name IS NULL
+	THROW 50011, '_Name is null', 1;
+SET @_Out = (
+	SELECT DetailID
+	FROM tblDETAIL
+	WHERE DetailName = @_Name
+)
+GO
