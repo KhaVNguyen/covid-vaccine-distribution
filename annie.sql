@@ -53,7 +53,7 @@ GO
 CREATE TABLE tblORDER     --with FK
 (
     OrderID INTEGER IDENTITY(1,1) PRIMARY KEY,
-    OrderDate VARCHAR(50) NOT NULL,
+    OrderDate DATETIME NOT NULL,
     CustomerID INTEGER FOREIGN KEY REFERENCES tblCUSTOMER(CustomerID),
     EmployeeID INTEGER FOREIGN KEY REFERENCES tblEMPLOYEE(EmployeeID),
 );
@@ -166,3 +166,52 @@ SET @E_ID = (
     AND EmployeeDOB = @E_DOB
 )
 GO
+
+-- GET OrderID (with FK EmployeeID and FK Customer)
+CREATE PROCEDURE GetOrderID
+    @OR_Date            DATETIME,
+    @OR_EmpFName        VARCHAR(50),
+    @OR_EmpLName        VARCHAR(50),
+    @OR_EmpDOB          DATE,
+    @OR_EmpTypeName     VARCHAR(50),
+    @OR_CustFname       VARCHAR(50),
+    @OR_CustLname       VARCHAR(50),
+    @OR_CustDOB         DATE,
+    @OR_CustEmail       VARCHAR(50),
+    @OR_ID              INT OUTPUT
+AS
+IF  @OR_Date IS NULL OR 
+    @OR_EmpFName IS NULL OR 
+    @OR_EmpLName IS NULL OR 
+    @OR_EmpDOB IS NULL OR 
+    @OR_EmpTypeName IS NULL OR 
+    @OR_CustFname IS NULL OR 
+    @OR_CustLname IS NULL OR 
+    @OR_CustDOB IS NULL OR 
+    @OR_CustEmail IS NULL
+    THROW 50006, 'None of parameter should not be null', 1;
+
+DECLARE @EmployeeID INT, @CustomerID INT
+
+EXEC GetEmployeeID
+@E_FName = @OR_EmpFName,
+@E_LName = @OR_EmpLName,
+@E_DOB = @OR_EmpDOB,
+@E_EmployeeTypeName = @OR_EmpTypeName,
+@E_ID = @EmployeeID
+
+-- combined from Kha 
+EXEC GetCustomerID
+@C_Fname = @OR_CustFname,
+@C_Lname = @OR_CustLname,
+@C_DOB = @OR_CustDOB,
+@C_Email= @OR_CustEmail,
+@C_ID = @CustomerID
+
+SET @OR_ID = (
+    SELECT OrderID
+    FROM tblORDER
+    WHERE OrderDate = @OR_Date
+)
+GO
+
