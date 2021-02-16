@@ -67,7 +67,7 @@ CREATE PROCEDURE GetShipmentTypeID
     @ST_ID      INT OUTPUT 
 AS 
 IF @ST_Name IS NULL
-    THROW 50001, 'ShipmentTypeName is null', 1; 
+    THROW 50201, 'ShipmentTypeName is null', 1; 
 SET @ST_ID = (
     SELECT ShipmentTypeID
     FROM tblSHIPMENT_TYPE 
@@ -82,9 +82,10 @@ CREATE PROCEDURE GetCarrierID
     @CR_ID      INT OUTPUT
 AS
 IF @CR_Name IS NULL OR @C_CityName IS NULL
-    THROW 50002, 'Carrier Name or City Name is null', 1; 
+    THROW 50202, 'Carrier Name or City Name is null', 1; 
 DECLARE @CityID INT
 
+-- Combined from Kha
 EXEC GetCityID
 @C_Name = @C_CityName
 @C_ID = @CityID
@@ -107,7 +108,7 @@ CREATE PROCEDURE GetShipmentID
 AS
 IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR 
     @SP_CarrierName IS NULL OR @SP_CityName IS NULL 
-    THROW 50003, 'None of parameter should not be null', 1; 
+    THROW 50203, 'None of parameter should not be null', 1; 
 DECLARE @ShipmentTypeID INT, @CarrierID INT
 
 EXEC GetShipmentTypeID
@@ -133,7 +134,7 @@ CREATE PROCEDURE GetEmployeeTypeID
     @ET_ID       INT OUTPUT 
 AS 
 IF @ET_Name IS NULL
-    THROW 50004, 'EmployeeTypeName is null', 1; 
+    THROW 50204, 'EmployeeTypeName is null', 1; 
 SET @ET_ID = (
     SELECT EmployeeTypeID
     FROM tblEMPLOYEE_TYPE 
@@ -151,7 +152,7 @@ CREATE PROCEDURE GetEmployeeID
 AS 
 IF @E_FName IS NULL OR @E_LName IS NULL OR @E_DOB IS NULL OR 
     @E_EmployeeTypeName IS NULL
-    THROW 50005, 'None of parameter should not be null', 1; 
+    THROW 50205, 'None of parameter should not be null', 1; 
 DECLARE @EmployeeTypeID INT
 
 EXEC GetEmployeeTypeID
@@ -189,7 +190,7 @@ IF  @OR_Date IS NULL OR
     @OR_CustLname IS NULL OR 
     @OR_CustDOB IS NULL OR 
     @OR_CustEmail IS NULL
-    THROW 50006, 'None of parameter should not be null', 1;
+    THROW 50206, 'None of parameter should not be null', 1;
 
 DECLARE @EmployeeID INT, @CustomerID INT
 
@@ -215,3 +216,40 @@ SET @OR_ID = (
 )
 GO
 
+-------------------------- Insert Sproc --------------------------------------
+
+-- Insert shipment 
+CREATE PROCEDURE Ins_Shipment
+    @InsSP_TrackingNum         VARCHAR(50),
+    @InsSP_Date                DATETIME,
+    @InsSP_ShipmentTypeName    VARCHAR(50),
+    @InsSP_CarrierName         VARCHAR(50),
+    @InsSP_CityName            VARCHAR(50)
+AS 
+BEGIN
+DECLARE @ShipmentTypeID INT, @CarrierID INT
+
+EXEC GetShipmentTypeID
+@ST_Name = @InsSP_ShipmentTypeName,
+@ST_ID = @ShipmentTypeID OUTPUT
+
+EXEC GetCarrierID
+@CR_Name = @InsSP_CarrierName,
+@C_CityName = @InsSP_CityName,
+@CR_ID = @CarrierID OUTPUT
+
+IF @ShipmentTypeID IS NULL OR @CarrierID IS NULL 
+    THROW 50207, '@ShipmentTypeID or @CarrierID not found', 1;
+
+INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
+VALUES (@InsSP_TrackingNum, @InsSP_Date, @ShipmentTypeID, @CarrierID)
+
+END 
+GO
+
+-------------------------- Populate Shipment --------------------------------------
+CREATE PROCEDURE PopulateShipment
+AS
+BEGIN
+DECLARE
+GO
