@@ -161,8 +161,8 @@ EXEC GetEmployeeTypeID
 SET @E_ID = (
     SELECT EmployeeID
     FROM tblEMPLOYEE
-    WHERE EmployeeFName = @E_LName,
-    EmployeeLName = @E_LName,
-    EmployeeDOB = @E_DOB
+    WHERE EmployeeFName = @E_LName
+    AND EmployeeLName = @E_LName
+    AND EmployeeDOB = @E_DOB
 )
 GO
