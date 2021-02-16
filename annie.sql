@@ -60,9 +60,11 @@ CREATE TABLE tblORDER     --with FK
 GO
 
 -------------------------- Get ID Sproc --------------------------------------
+
+-- GET ShipmentTypeID
 CREATE PROCEDURE GetShipmentTypeID
-@ST_Name VARCHAR(50),
-@ST_ID INT OUTPUT 
+    @ST_Name    VARCHAR(50),
+    @ST_ID      INT OUTPUT 
 AS 
 IF @ST_Name IS NULL
     THROW 50001, 'ShipmentTypeName is null', 1; 
@@ -73,15 +75,94 @@ SET @ST_ID = (
 )
 GO 
 
+-- GET CarrierID
+CREATE PROCEDURE GetCarrierID
+    @CR_Name    VARCHAR(50),
+    @C_CityName VARCHAR(50),
+    @CR_ID      INT OUTPUT
+AS
+IF @CR_Name IS NULL OR @C_CityName IS NULL
+    THROW 50002, 'Carrier Name or City Name is null', 1; 
+DECLARE @CityID INT
+
+EXEC GetCityID
+@C_Name = @C_CityName
+@C_ID = @CityID
+
+SET @CR_ID = (
+    SELECT CarrierID
+    FROM tblCARRIER
+    WHERE CarrierName = @CR_Name
+)
+GO
+
+-- GET ShipmentID (with FK ShipmentType and FK Carrier)
+CREATE PROCEDURE GetShipmentID
+    @SP_TrackingNum         VARCHAR(50),
+    @SP_Date                DATETIME,
+    @SP_ShipmentTypeName    VARCHAR(50),
+    @SP_CarrierName         VARCHAR(50),
+    @SP_CityName            VARCHAR(50),
+    @SP_ID                  INT OUTPUT
+AS
+IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR 
+    @SP_CarrierName IS NULL OR @SP_CityName IS NULL 
+    THROW 50003, 'None of parameter should not be null', 1; 
+DECLARE @ShipmentTypeID INT, @CarrierID INT
+
+EXEC GetShipmentTypeID
+@ST_Name = @SP_ShipmentTypeName,
+@ST_ID = @ShipmentTypeID 
+
+EXEC GetCarrierID
+@CR_Name = @SP_CarrierName,
+@C_CityName = @SP_CityName,
+@CR_ID = @CarrierID
+
+SET @SP_ID = (
+    SELECT ShipmentID 
+    FROM tblSHIPMENT
+    WHERE TrackingNumber = @SP_TrackingNum 
+    AND ShippingDate = @SP_Date
+)
+GO
+
+-- GET EmployeeTypeID
 CREATE PROCEDURE GetEmployeeTypeID
-@ET_Name VARCHAR(50),
-@ET_ID INT OUTPUT 
+    @ET_Name     VARCHAR(50),
+    @ET_ID       INT OUTPUT 
 AS 
 IF @ET_Name IS NULL
-    THROW 50002, 'EmployeeTypeName is null', 1; 
+    THROW 50004, 'EmployeeTypeName is null', 1; 
 SET @ET_ID = (
     SELECT EmployeeTypeID
     FROM tblEMPLOYEE_TYPE 
     WHERE EmployeeTypeName = @ET_Name
 )
-GO 
+GO
+
+-- GET EmployeeID
+CREATE PROCEDURE GetEmployeeID
+    @E_FName            VARCHAR(50),
+    @E_LName            VARCHAR(50),
+    @E_DOB              DATE,
+    @E_EmployeeTypeName VARCHAR(50),
+    @E_ID        INT OUTPUT
+AS 
+IF @E_FName IS NULL OR @E_LName IS NULL OR @E_DOB IS NULL OR 
+    @E_EmployeeTypeName IS NULL
+    THROW 50005, 'None of parameter should not be null', 1; 
+DECLARE @EmployeeTypeID INT
+
+EXEC GetEmployeeTypeID
+@ET_Name = @E_EmployeeTypeName,
+@ET_ID = @EmployeeTypeID
+
+SET @E_ID = (
+    SELECT EmployeeID
+    FROM tblEMPLOYEE
+    WHERE EmployeeFName = @E_LName,
+    EmployeeLName = @E_LName,
+    EmployeeDOB = @E_DOB
+)
+GO
