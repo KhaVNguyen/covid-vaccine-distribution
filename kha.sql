@@ -117,6 +117,56 @@ GO
 
 
 /* Data Inserting Procedures */
+
+-- Populate our own database cities and states table with data from PEEPS
+CREATE PROCEDURE 
+PopulateCitiesAndStates
+AS 
+BEGIN
+-- create temporary table 
+SELECT CityName, StateName 
+INTO #CitiesAndStatesTemp
+FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP]
+
+DECLARE @Run INT = 1
+DECLARE @NumRows INT = (SELECT COUNT(*) FROM #CitiesAndStatesTemp)
+
+WHILE @Run <= @NumRows 
+    BEGIN 
+        DECLARE @City VARCHAR(50) = (SELECT TOP 1 CityName FROM #CitiesAndStatesTemp)
+        DECLARE @State VARCHAR(50) = (SELECT TOP 1 StateName FROM #CitiesAndStatesTemp)
+        
+        -- Insert into tblSTATE
+        IF NOT EXISTS (
+            SELECT * FROM tblSTATE
+            WHERE StateName = @State
+        )
+        BEGIN
+            INSERT INTO tblSTATE(StateName)
+            VALUES (@State)
+        END
+
+        -- Find StateID
+        DECLARE @StateID INT = (
+            SELECT StateID
+            FROM tblSTATE
+            WHERE StateName = @State
+        )
+
+        -- INSERT INTO tblCITY
+        INSERT INTO tblCITY(CityName, StateID)
+        VALUES (@City, @StateID)
+
+        -- Delete from temp table
+        DELETE TOP(1)
+        FROM #CitiesAndStatesTemp
+
+        SET @Run = @Run + 1
+    END 
+END
+GO
+
+
 CREATE PROCEDURE 
 CreateNewAddress
 @AddressLine1 VARCHAR(100),
@@ -144,9 +194,13 @@ IF @StateID IS NULL
 IF (SELECT StateID FROM tblCITY WHERE CityID = @CityID) <> @StateID
     THROW 55002, 'This city is not in this state', 1
 
+BEGIN TRANSACTION
 INSERT INTO tblADDRESS(AddressLine1, AddressLine2, Zip, CityID, StateID)
 VALUES (@AddressLine1, @AddressLine2, @Zip, @CityID, @StateID)
-
+IF @@ERROR <> 0 
+    ROLLBACK
+ELSE 
+    COMMIT
 END 
 GO
 
@@ -159,9 +213,9 @@ DECLARE @Run INT = 1
 WHILE @Run <= @NumberOfAddresses
     BEGIN
     -- get a random city
-    DECLARE @RandomCityID INTEGER = FLOOR(RAND() * ((SELECT COUNT(*) FROM tblCITY)) + 1)
+    DECLARE @RandomCityID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM tblCITY) + 1)
     DECLARE @RandomCityName VARCHAR(100) = (
-        SELECT TOP 1 CityName 
+        SELECT CityName 
         FROM tblCITY
         WHERE CityID = @RandomCityID
     )
@@ -173,15 +227,29 @@ WHILE @Run <= @NumberOfAddresses
         WHERE StateID = (SELECT StateID FROM tblCITY WHERE CityID = @RandomCityID)
     )
 
+    DECLARE @RandomHouseNumberID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]) + 1)
+    DECLARE @RandomHouseNumber VARCHAR(5) = (SELECT HouseNumber  FROM [PEEPS].[dbo].[tblHOUSE_NUMBER] WHERE HouseNumID = @RandomHouseNumberID)
+
+    DECLARE @RandomStreetNameID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].[tblSTREET_NAME]) + 1)
+    DECLARE @RandomStreetName VARCHAR(75) = (SELECT StreetName FROM [PEEPS].[dbo].[tblSTREET_NAME] WHERE StreetNameID = @RandomStreetNameID)
+    
+    DECLARE @RandomStreetSuffixID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].[tblSTREET_SUFFIX]) + 1)
+    DECLARE @RandomStreetSuffix VARCHAR(25) = (SELECT StreetSuffix FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] WHERE StreetSuffixID = @RandomStreetSuffixID)
+    
+    DECLARE @RandomCityStateZipID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].tblCITY_STATE_ZIP) + 1)
+    DECLARE @RandomZip VARCHAR(5) = (SELECT Zip FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] WHERE CityStateZipID = @RandomCityStateZipID)
+
+    DECLARE @RandomAddressLine1 VARCHAR(105) = CONCAT(@RandomHouseNumber, ' ', @RandomStreetName, ' ', @RandomStreetSuffix)
+
     EXEC CreateNewAddress
-    @AddressLine1  = 'Random address line 1',
+    @AddressLine1  = @RandomAddressLine1,
     @AddressLine2 = 'Random address line 2',
-    @Zip = '00000',
+    @Zip = @RandomZip,
     @CityName = @RandomCityName,
     @StateName = @RandomStateName
 
     SET @Run = @Run + 1
-    
+
     END
 END
 GO
