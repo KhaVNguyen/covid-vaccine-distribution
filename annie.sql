@@ -1,3 +1,5 @@
+USE INFO430_Proj_10
+
 CREATE TABLE tblSHIPMENT_TYPE
 (
     ShipmentTypeID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -243,13 +245,100 @@ IF @ShipmentTypeID IS NULL OR @CarrierID IS NULL
 
 INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
 VALUES (@InsSP_TrackingNum, @InsSP_Date, @ShipmentTypeID, @CarrierID)
-
 END 
 GO
 
--------------------------- Populate Shipment --------------------------------------
-CREATE PROCEDURE PopulateShipment
+-------------------------- Populate EmployeeData --------------------------------------
+CREATE PROCEDURE PopulateEmployeeInfo
 AS
 BEGIN
-DECLARE
+SELECT S.StaffFName, S.StaffLName, S.StaffBirth, PT.PositionTypeName 
+INTO #EmployeeWorkingData FROM UNIVERSITY.dbo.tblSTAFF S
+    JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
+    JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
+    JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID
+
+DECLARE @Run INT = 1
+DECLARE @NumRows INT = (SELECT COUNT(*) FROM #EmployeeWorkingData)
+DECLARE @Emp_Firsty VARCHAR(20),@Emp_Lasty VARCHAR(20), @Emp_Birthy DATE, @Emp_Type VARCHAR(20), @Emp_TypeID INT
+
+WHILE @Run <= @NumRows
+    BEGIN
+            SET @Emp_Firsty = (SELECT TOP 1 StaffFName FROM #EmployeeWorkingData)
+            SET @Emp_Lasty = (SELECT TOP 1 StaffLName FROM #EmployeeWorkingData)
+            SET @Emp_Birthy = (SELECT TOP 1 StaffBirth FROM #EmployeeWorkingData)
+            SET @Emp_Type = (SELECT TOP 1 PositionTypeName FROM #EmployeeWorkingData)
+        
+            EXEC GetEmployeeTypeID
+            @ET_Name = @Emp_Type,
+            @ET_ID = @Emp_TypeID OUTPUT
+
+            INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
+            VALUES(@Emp_Firsty, @Emp_Lasty, @Emp_Birthy, @Emp_TypeID)
+            DELETE TOP(1) FROM #EmployeeWorkingData
+        SET @RUN = @RUN + 1
+    END
+END
+
+
+SELECT * FROM #EmployeeWorkingData
+
+
+
+
+-- insert Employee
+CREATE PROCEDURE InsertEmployee
+    @Ins_EmpFName            VARCHAR(50),
+    @Ins_EmpLName            VARCHAR(50),
+    @Ins_EmpDOB              DATE,
+    @Ins_EmpTypeName         VARCHAR(50)
+AS
+BEGIN
+DECLARE @EmployeeTypeID INT
+
+    EXEC GetEmployeeTypeID
+    @ET_Name = @Ins_EmpTypeName,
+    @ET_ID = @EmployeeTypeID OUTPUT
+
+    IF @EmployeeTypeID IS NULL
+        THROW 50209, '@EmployeeTypeID is not found', 1;
+
+    BEGIN TRANSACTION
+        INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
+        VALUES(@Ins_EmpFName,@Ins_EmpLName, @Ins_EmpDOB, @EmployeeTypeID)
+    IF @@ERROR <> 0 
+        ROLLBACK
+    ELSE 
+        COMMIT
+    END 
 GO
+
+CREATE PROCEDURE Populate_Employees
+@NumsEmp INTEGER
+AS
+BEGIN
+DECLARE @Run INT = 1
+WHILE @Run <= @NumsEmp
+    BEGIN 
+    DECLARE @RandEmpID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM tblEMPLOYEE) + 1)
+    DECLARE @RandEmpFName VARCHAR(20) = (SELECT EmployeeFName FROM tblEMPLOYEE WHERE EmployeeID = @RandEmpID)
+    DECLARE @RandEmpLName VARCHAR(20) = (SELECT EmployeeLName FROM tblEMPLOYEE WHERE EmployeeID = @RandEmpID)
+    DECLARE @RandEmpDOB DATE = (SELECT EmployeeDOB FROM tblEMPLOYEE WHERE EmployeeID = @RandEmpID)
+    DECLARE @RandEmpType VARCHAR(20) = (SELECT EmployeeTypeName FROM tblEMPLOYEE_TYPE ET JOIN tblEMPLOYEE E ON ET.EmployeeTypeID = E.EmployeeTypeID WHERE E.EmployeeID = @RandEmpID)
+
+        EXEC InsertEmployee
+        @Ins_EmpFName = @RandEmpFName,
+        @Ins_EmpLName = @RandEmpLName,
+        @Ins_EmpDOB = @RandEmpDOB,
+        @Ins_EmpTypeName = @RandEmpType
+
+        SET @Run = @Run + 1
+
+        END
+    END
+GO
+
+
+
+
+
