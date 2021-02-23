@@ -253,3 +253,91 @@ WHILE @Run <= @NumberOfAddresses
     END
 END
 GO
+
+-- Business Rules 
+CREATE FUNCTION fn_AddressCityMustBeInState()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0
+	IF EXISTS 
+    (
+		SELECT *
+		FROM tblADDRESS
+        JOIN tblCITY ON tblADDRESS.CityID = tblCITY.CityID
+		WHERE tblADDRESS.StateID <> tblCITY.StateID
+	)
+	BEGIN
+		SET @RET = 1
+	END
+RETURN @RET
+END
+GO
+
+CREATE FUNCTION fn_50StatesMax()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0
+	IF  
+    (
+		SELECT COUNT(*)
+		FROM tblSTATE
+	) > 50
+	BEGIN
+		SET @RET = 1
+	END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblSTATE with nocheck
+ADD CONSTRAINT CK_50StatesMax
+CHECK (dbo.fn_50StatesMax() = 0)
+GO
+
+-- Computed Columns
+CREATE FUNCTION fn_NumAddressLines(@PK INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @RET INT = 0
+    IF (
+        SELECT AddressLine1 
+        FROM tblADDRESS
+        WHERE AddressID = @PK
+    ) IS NOT NULL 
+    BEGIN 
+        SET @Ret = @Ret + 1
+    END
+    IF (
+        SELECT AddressLine2 
+        FROM tblADDRESS
+        WHERE AddressID = @PK
+    ) IS NOT NULL 
+    BEGIN 
+        SET @Ret = @Ret + 1
+    END
+	RETURN @RET
+END
+GO
+
+ALTER TABLE tblADDRESS
+ADD NumAddressLines AS (dbo.fn_NumAddressLines(AddressID))
+GO
+
+CREATE FUNCTION fn_CustomerAge(@PK INT)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @RET INT = (
+        SELECT FLOOR(DATEDIFF(DAY, CustomerDOB, GETDATE()) / 365.25) 
+        FROM tblCUSTOMER
+        WHERE CustomerID = @PK
+    )
+	RETURN @RET
+END
+GO
+
+ALTER TABLE tblCUSTOMER
+ADD CustomerAge AS (dbo.fn_CustomerAge(CustomerID))
