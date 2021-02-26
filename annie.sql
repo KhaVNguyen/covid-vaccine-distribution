@@ -249,7 +249,7 @@ END
 GO
 
 -------------------------- Populate EmployeeData --------------------------------------
-CREATE PROCEDURE PopulateEmployeeInfo
+CREATE OR ALTER PROCEDURE PopulateEmployeeInfo
 AS
 BEGIN
 SELECT S.StaffFName, S.StaffLName, S.StaffBirth, PT.PositionTypeName 
@@ -281,13 +281,10 @@ WHILE @Run <= @NumRows
 END
 
 
-SELECT * FROM #EmployeeWorkingData
-
-
 
 
 -- insert Employee
-CREATE PROCEDURE InsertEmployee
+CREATE OR ALTER PROCEDURE InsertEmployee
     @Ins_EmpFName            VARCHAR(50),
     @Ins_EmpLName            VARCHAR(50),
     @Ins_EmpDOB              DATE,
@@ -313,7 +310,7 @@ DECLARE @EmployeeTypeID INT
     END 
 GO
 
-CREATE PROCEDURE Populate_Employees
+CREATE OR ALTER PROCEDURE Populate_Employees
 @NumsEmp INTEGER
 AS
 BEGIN
@@ -342,3 +339,83 @@ GO
 
 
 
+-------------------------- Business Rules  --------------------------------------
+-- 1. Order date should be earlier than shipping date
+CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0 
+IF EXISTS (SELECT O.OrderID, O.OrderDate FROM tblORDER O 
+            JOIN tblCUSTOMER CS ON O.CustomerID = CS.CustomerID
+            JOIN tblADDRESS A ON CS.AddressID = A.AddressID
+            JOIN tblCITY C ON A.CityID = C.CityID
+            JOIN tblCARRIER CR ON C.CityID = CR.CityID
+            JOIN tblSHIPMENT S ON CR.CarrierID = S.CarrierID 
+            WHERE S.ShippingDate >= O.OrderDate
+            GROUP BY O.OrderID, O.OrderDate
+        )
+        BEGIN 
+            SET @RET = 1
+        END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblORDER with nocheck
+ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
+CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
+GO
+
+-- 2. Employee with less than 18 years old should not be full-time
+CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder18ForFullTime()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0 
+IF EXISTS (SELECT EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, CAST(DATEDIFF(day, GETDATE(), EmployeeDOB) / 365.25 AS INT) AS Age, E.EmployeeTypeID  
+            FROM tblEMPLOYEE E
+            JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
+            WHERE CAST(DATEDIFF(day, GETDATE(), EmployeeDOB) / 365.25 AS INT) < 18
+            AND ET.EmployeeTypeName = 'Full-Time'
+            GROUP BY EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, E.EmployeeTypeID
+        )
+        BEGIN 
+            SET @RET = 1
+        END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblEMPLOYEE with nocheck
+ADD CONSTRAINT CK_EmployeeMustBeOlder18ForFullTime
+CHECK (dbo.fn_EmployeeMustBeOlder18ForFullTime() = 0)
+GO
+
+-------------------------- Computed Columns --------------------------------------
+
+-- need to check 
+-- 1. Top 10 order states
+
+CREATE FUNCTION FN_Top10_OrderStates (@PK INT) 
+RETURNS INT
+AS
+BEGIN
+
+DECLARE @RET INT = (SELECT TOP 10 COUNT(O.OrderID) AS NumOrder, S.StateName
+FROM tblORDER O
+    JOIN tblCUSTOMER CS ON O.CustomerID = CS.CustomerID
+    JOIN tblADDRESS A ON CS.AddressID = A.AddressID
+    JOIN tblCITY C ON A.CityID = C.CityID
+    JOIN tblSTATE S ON C.StateID = S.StateID
+AND R.RoomID = @PK)
+
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblROOM
+ADD TototalAmenityPoints AS (dbo.FN_TotalRoomAmenities (RoomID)) 
+GO
+
+-- 2.
