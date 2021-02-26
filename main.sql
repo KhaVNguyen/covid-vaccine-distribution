@@ -298,14 +298,23 @@ EXEC GetAddressID
 @A_StateName = @C_AStateName,
 @A_ID = @AddressID
 
+IF @AddressID IS NULL 
+    THROW 50300, 'Could not find that address', 1; 
+
 -- combined from Kha 
 EXEC GetPriorityID 
 @P_Name = @C_Pname,
 @P_ID = @PriorityID
 
+IF @PriorityID IS NULL 
+    THROW 50301, 'Could not find that priority type', 1; 
+
 EXEC GetCustomerTypeID
 @_Name = @C_CustTypeName,
 @_Out = @CustomerTypeID
+
+IF @CustomerTypeID IS NULL 
+    THROW 50301, 'Could not find that customer type', 1; 
 
 SET @C_ID = (
     SELECT CustomerID
@@ -318,7 +327,10 @@ SET @C_ID = (
         AND PriorityID = @PriorityID
         AND CustomerTypeID = @CustomerTypeID
 )
+
+
 GO
+
 
 
 -- Annie
@@ -348,7 +360,7 @@ DECLARE @CityID INT
 
 -- Combined from Kha
 EXEC GetCityID
-@C_Name = @C_CityName
+@C_Name = @C_CityName,
 @C_ID = @CityID
 
 SET @CR_ID = (
