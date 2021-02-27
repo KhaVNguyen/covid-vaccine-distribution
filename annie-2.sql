@@ -27,13 +27,24 @@ GO
 
 
 CREATE OR ALTER PROCEDURE PopulateEmployee
-@NumsEmp INTEGER
+@Run INT
 AS
-BEGIN
-DECLARE @Run INT = 1
-WHILE @Run <= @NumsEmp
-    BEGIN 
-        DECLARE @RandEmpID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM UNIVERSITY.dbo.tblSTAFF) + 1)
+DECLARE @NumsEmp INT = (SELECT COUNT(*) FROM UNIVERSITY.dbo.tblSTAFF)
+DECLARE @Emp_Fname VARCHAR(50), @Emp_Lname VARCHAR(50), @Emp_Birthy DATE, @Emp_Type VARCHAR(50)
+DECLARE @Emp_ID INT
+WHILE @Run > 0
+    BEGIN
+        SET @Emp_ID = FLOOR(RAND() * @NumsEmp + 1)
+        SET @Emp_Fname = (SELECT StaffFName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @Emp_ID)
+        SET @Emp_Lname = (SELECT StaffLName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @Emp_ID)
+        SET @Emp_Birthy = (SELECT StaffBirth FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @Emp_ID)
+        SET @Emp_Type = (SELECT PT.PositionTypeName 
+                        FROM UNIVERSITY.dbo.tblSTAFF S
+                        JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
+                        JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
+                        JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID WHERE S.StaffID = @Emp_ID)
+
+        /*DECLARE @RandEmpID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM UNIVERSITY.dbo.tblSTAFF) + 1)
         DECLARE @RandEmpFName VARCHAR(20) = (SELECT StaffFName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
         DECLARE @RandEmpLName VARCHAR(20) = (SELECT StaffLName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
         DECLARE @RandEmpDOB DATE = (SELECT StaffBirth FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
@@ -41,17 +52,15 @@ WHILE @Run <= @NumsEmp
                                             FROM UNIVERSITY.dbo.tblSTAFF S
                                             JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
                                             JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
-                                            JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID WHERE S.StaffID = @RandEmpID)
+                                            JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID WHERE S.StaffID = @RandEmpID)*/
 
         EXEC Ins_Employee
-        @Ins_EmpFName = @RandEmpFName,
-        @Ins_EmpLName = @RandEmpLName,
-        @Ins_EmpDOB = @RandEmpDOB,
-        @Ins_EmpTypeName = @RandEmpType
+        @Ins_EmpFName = @Emp_Fname,
+        @Ins_EmpLName = @Emp_Lname,
+        @Ins_EmpDOB = @Emp_Birthy,
+        @Ins_EmpTypeName = @Emp_Type
 
-        SET @Run = @Run + 1
-
-        END
+        SET @Run = @Run - 1
     END
 GO
 
@@ -68,10 +77,7 @@ INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc)
 VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
 
 EXEC PopulateEmployee
-@NumsEmp = 50
+@Run = 50
 
-
-
-SELECT * FROM tblEMPLOYEE_TYPE
-SELECT * FROM UNIVERSITY.dbo.tblPOSITION_TYPE
+select * from tblEMPLOYEE
 
