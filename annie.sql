@@ -240,51 +240,20 @@ EXEC GetCarrierID
 @C_CityName = @InsSP_CityName,
 @CR_ID = @CarrierID OUTPUT
 
-IF @ShipmentTypeID IS NULL OR @CarrierID IS NULL 
-    THROW 50207, '@ShipmentTypeID or @CarrierID not found', 1;
-
-INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
-VALUES (@InsSP_TrackingNum, @InsSP_Date, @ShipmentTypeID, @CarrierID)
-END 
+    IF @ShipmentTypeID IS NULL OR @CarrierID IS NULL 
+        THROW 50207, '@ShipmentTypeID or @CarrierID not found', 1;
+    BEGIN TRANSACTION T1
+        INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
+        VALUES (@InsSP_TrackingNum, @InsSP_Date, @ShipmentTypeID, @CarrierID)
+    IF @@ERROR <> 0 
+        ROLLBACK TRANSACTION T1
+    ELSE 
+        COMMIT TRANSACTION T1
+    END 
 GO
 
--------------------------- Populate EmployeeData --------------------------------------
-CREATE OR ALTER PROCEDURE PopulateEmployeeInfo
-AS
-BEGIN
-SELECT S.StaffFName, S.StaffLName, S.StaffBirth, PT.PositionTypeName 
-INTO #EmployeeWorkingData FROM UNIVERSITY.dbo.tblSTAFF S
-    JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
-    JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
-    JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID
-
-DECLARE @Run INT = 1
-DECLARE @NumRows INT = (SELECT COUNT(*) FROM #EmployeeWorkingData)
-DECLARE @Emp_Firsty VARCHAR(20),@Emp_Lasty VARCHAR(20), @Emp_Birthy DATE, @Emp_Type VARCHAR(20), @Emp_TypeID INT
-
-WHILE @Run <= @NumRows
-    BEGIN
-            SET @Emp_Firsty = (SELECT TOP 1 StaffFName FROM #EmployeeWorkingData)
-            SET @Emp_Lasty = (SELECT TOP 1 StaffLName FROM #EmployeeWorkingData)
-            SET @Emp_Birthy = (SELECT TOP 1 StaffBirth FROM #EmployeeWorkingData)
-            SET @Emp_Type = (SELECT TOP 1 PositionTypeName FROM #EmployeeWorkingData)
-        
-            EXEC GetEmployeeTypeID
-            @ET_Name = @Emp_Type,
-            @ET_ID = @Emp_TypeID OUTPUT
-
-            INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
-            VALUES(@Emp_Firsty, @Emp_Lasty, @Emp_Birthy, @Emp_TypeID)
-            DELETE TOP(1) FROM #EmployeeWorkingData
-        SET @RUN = @RUN + 1
-    END
-END
-
-
-
-
 -- insert Employee
-CREATE OR ALTER PROCEDURE InsertEmployee
+CREATE OR ALTER PROCEDURE Ins_Employee
     @Ins_EmpFName            VARCHAR(50),
     @Ins_EmpLName            VARCHAR(50),
     @Ins_EmpDOB              DATE,
@@ -300,30 +269,68 @@ DECLARE @EmployeeTypeID INT
     IF @EmployeeTypeID IS NULL
         THROW 50209, '@EmployeeTypeID is not found', 1;
 
-    BEGIN TRANSACTION
+    BEGIN TRANSACTION T1
         INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
         VALUES(@Ins_EmpFName,@Ins_EmpLName, @Ins_EmpDOB, @EmployeeTypeID)
     IF @@ERROR <> 0 
-        ROLLBACK
+        ROLLBACK TRANSACTION T1
     ELSE 
-        COMMIT
+        COMMIT TRANSACTION T1
     END 
 GO
 
-CREATE OR ALTER PROCEDURE Populate_Employees
+-------------------------- Populate EmployeeData --------------------------------------
+/*CREATE OR ALTER PROCEDURE PopulateEmployeeInfo
+AS
+BEGIN
+SELECT S.StaffFName, S.StaffLName, S.StaffBirth, PT.PositionTypeName 
+    FROM UNIVERSITY.dbo.tblSTAFF S
+    JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
+    JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
+    JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID
+
+DECLARE @Run INT = 1
+DECLARE @NumRows INT = (SELECT COUNT(*) FROM UNIVERSITY.dbo.tblSTAFF)
+DECLARE @Emp_Firsty VARCHAR(20),@Emp_Lasty VARCHAR(20), @Emp_Birthy DATE, @Emp_Type VARCHAR(20), @Emp_TypeID INT
+
+WHILE @Run <= @NumRows
+    BEGIN
+            SET @Emp_Firsty = (SELECT TOP 1 StaffFName FROM #EmployeeWorkingData)
+            SET @Emp_Lasty = (SELECT TOP 1 StaffLName FROM #EmployeeWorkingData)
+            SET @Emp_Birthy = (SELECT TOP 1 StaffBirth FROM #EmployeeWorkingData)
+            SET @Emp_Type = (SELECT TOP 1 PositionTypeName FROM #EmployeeWorkingData)
+        
+            EXEC GetEmployeeTypeID
+            @ET_Name = @Emp_Type,
+            @ET_ID = @Emp_TypeID OUTPUT
+
+            INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
+            VALUES(@Emp_Firsty, @Emp_Lasty, @Emp_Birthy, @Emp_TypeID)
+            --DELETE TOP(1) FROM #EmployeeWorkingData
+        SET @RUN = @RUN + 1
+    END
+END
+
+SELECT TOP 10 * FROM UNIVERSITY.dbo.tblSTAFF*/
+
+CREATE OR ALTER PROCEDURE PopulateEmployee
 @NumsEmp INTEGER
 AS
 BEGIN
 DECLARE @Run INT = 1
 WHILE @Run <= @NumsEmp
     BEGIN 
-    DECLARE @RandEmpID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM tblEMPLOYEE) + 1)
-    DECLARE @RandEmpFName VARCHAR(20) = (SELECT EmployeeFName FROM tblEMPLOYEE WHERE EmployeeID = @RandEmpID)
-    DECLARE @RandEmpLName VARCHAR(20) = (SELECT EmployeeLName FROM tblEMPLOYEE WHERE EmployeeID = @RandEmpID)
-    DECLARE @RandEmpDOB DATE = (SELECT EmployeeDOB FROM tblEMPLOYEE WHERE EmployeeID = @RandEmpID)
-    DECLARE @RandEmpType VARCHAR(20) = (SELECT EmployeeTypeName FROM tblEMPLOYEE_TYPE ET JOIN tblEMPLOYEE E ON ET.EmployeeTypeID = E.EmployeeTypeID WHERE E.EmployeeID = @RandEmpID)
+        DECLARE @RandEmpID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM UNIVERSITY.dbo.tblSTAFF) + 1)
+        DECLARE @RandEmpFName VARCHAR(20) = (SELECT StaffFName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
+        DECLARE @RandEmpLName VARCHAR(20) = (SELECT StaffLName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
+        DECLARE @RandEmpDOB DATE = (SELECT StaffBirth FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
+        DECLARE @RandEmpType VARCHAR(20) = (SELECT PT.PositionTypeName 
+    FROM UNIVERSITY.dbo.tblSTAFF S
+    JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
+    JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
+    JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID WHERE S.StaffID = @RandEmpID)
 
-        EXEC InsertEmployee
+        EXEC Ins_Employee
         @Ins_EmpFName = @RandEmpFName,
         @Ins_EmpLName = @RandEmpLName,
         @Ins_EmpDOB = @RandEmpDOB,
@@ -334,6 +341,8 @@ WHILE @Run <= @NumsEmp
         END
     END
 GO
+
+SELECT * FROM tblEMPLOYEE
 
 
 
@@ -408,7 +417,7 @@ FROM tblORDER O
     JOIN tblADDRESS A ON CS.AddressID = A.AddressID
     JOIN tblCITY C ON A.CityID = C.CityID
     JOIN tblSTATE S ON C.StateID = S.StateID
-AND R.RoomID = @PK)
+)
 
 RETURN @RET
 END
