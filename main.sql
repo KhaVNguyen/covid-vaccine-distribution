@@ -33,6 +33,7 @@ CREATE TABLE tblADDRESS
 );
 GO
 
+
 CREATE TABLE tblCARRIER     --with FK
 (
     CarrierID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -495,3 +496,5 @@ SET @OR_ID = (
         AND EmployeeID = @EmployeeID
 )
 GO
+
+

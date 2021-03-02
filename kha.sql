@@ -1,3 +1,5 @@
+USE INFO430_Proj_10
+
 CREATE TABLE tblSTATE
 (
     StateID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -31,6 +33,16 @@ CREATE TABLE tblPRIORITY
     PriorityName VARCHAR(50),
     PriorityDesc VARCHAR(1000)
 );
+GO
+
+
+INSERT INTO tblPRIORITY (PriorityName, PriorityDesc)
+VALUES 
+    ('1A - LTCF & Healthcare Personnel', 'Long term care facility members and authorized front-line healthcare workers'),
+    ('1B - 75+ & Frontline Essential Workers', 'Older people of 75+ years & frontline essential workers, key to functionality of critical operations'),
+    ('1C - 65-74 & High Risk', 'Those between ages 65-74 or those with high risk medical conditions'),
+    ('2 - Older Adults', 'Older adults not served in Phase 1 (ages 40+)'),
+    ('3 - Young Adults & Children', 'Younger adults (ages 18-39) and children')
 GO
 
 CREATE TABLE tblCUSTOMER
@@ -119,7 +131,7 @@ GO
 /* Data Inserting Procedures */
 
 -- Populate our own database cities and states table with data from PEEPS
-CREATE PROCEDURE 
+CREATE OR ALTER PROCEDURE 
 PopulateCitiesAndStates
 AS 
 BEGIN
@@ -135,15 +147,16 @@ WHILE @Run <= @NumRows
     BEGIN 
         DECLARE @City VARCHAR(50) = (SELECT TOP 1 CityName FROM #CitiesAndStatesTemp)
         DECLARE @State VARCHAR(50) = (SELECT TOP 1 StateName FROM #CitiesAndStatesTemp)
-        
+        DECLARE @StateCode VARCHAR(2) = (SELECT TOP 1 RIGHT(StateName, 2) FROM #CitiesAndStatesTemp)
+
         -- Insert into tblSTATE
         IF NOT EXISTS (
             SELECT * FROM tblSTATE
             WHERE StateName = @State
         )
         BEGIN
-            INSERT INTO tblSTATE(StateName)
-            VALUES (@State)
+            INSERT INTO tblSTATE(StateName, StateCode)
+            VALUES (@State, @StateCode)
         END
 
         -- Find StateID
@@ -154,8 +167,14 @@ WHILE @Run <= @NumRows
         )
 
         -- INSERT INTO tblCITY
-        INSERT INTO tblCITY(CityName, StateID)
-        VALUES (@City, @StateID)
+        IF NOT EXISTS (
+            SELECT * FROM tblCITY
+            WHERE CityName = @City
+        )
+        BEGIN
+            INSERT INTO tblCITY (CityName, StateID)
+            VALUES (@City, @StateID)
+        END
 
         -- Delete from temp table
         DELETE TOP(1)
@@ -166,14 +185,16 @@ WHILE @Run <= @NumRows
 END
 GO
 
+EXEC PopulateCitiesAndStates
+GO
 
-CREATE PROCEDURE 
+CREATE OR ALTER PROCEDURE 
 CreateNewAddress
 @AddressLine1 VARCHAR(100),
 @AddressLine2 VARCHAR(100),
 @Zip VARCHAR(5),
-@CityName INTEGER,
-@StateName INTEGER
+@CityName VARCHAR(100),
+@StateName VARCHAR(100)
 AS
 BEGIN
 
@@ -181,13 +202,13 @@ DECLARE @CityID INT, @StateID INT
 
 EXEC GetCityID 
 @C_Name = @CityName,
-@C_ID = @CityID
+@C_ID = @CityID OUTPUT
 IF @CityID IS NULL 
     THROW 55000, 'City does not exist', 1
 
 EXEC GetStateID 
 @S_Name = @StateName,
-@S_ID = @StateID
+@S_ID = @StateID OUTPUT
 IF @StateID IS NULL
     THROW 55001, 'State does not exist', 1
 
@@ -204,42 +225,57 @@ ELSE
 END 
 GO
 
-CREATE PROCEDURE 
+
+CREATE OR ALTER PROCEDURE 
 PopulateAddresses
 @NumberOfAddresses INTEGER
 AS
 BEGIN
-DECLARE @Run INT = 1
+DECLARE @Run INTEGER = 1
 WHILE @Run <= @NumberOfAddresses
     BEGIN
     -- get a random city
-    DECLARE @RandomCityID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM tblCITY) + 1)
+    
     DECLARE @RandomCityName VARCHAR(100) = (
-        SELECT CityName 
+        SELECT TOP 1 CityName 
         FROM tblCITY
-        WHERE CityID = @RandomCityID
+        ORDER BY NEWID()
     )
 
     -- get the state associated with that city
     DECLARE @RandomStateName VARCHAR(100) = (
         SELECT StateName
-        FROM tblSTATE
-        WHERE StateID = (SELECT StateID FROM tblCITY WHERE CityID = @RandomCityID)
+        FROM tblCITY
+            JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID
+        WHERE CityName = @RandomCityName
     )
 
-    DECLARE @RandomHouseNumberID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]) + 1)
-    DECLARE @RandomHouseNumber VARCHAR(5) = (SELECT HouseNumber  FROM [PEEPS].[dbo].[tblHOUSE_NUMBER] WHERE HouseNumID = @RandomHouseNumberID)
+    DECLARE @RandomHouseNumber VARCHAR(5) = (
+        SELECT TOP 1 HouseNumber 
+        FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]
+        ORDER BY NEWID()
+    )
 
-    DECLARE @RandomStreetNameID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].[tblSTREET_NAME]) + 1)
-    DECLARE @RandomStreetName VARCHAR(75) = (SELECT StreetName FROM [PEEPS].[dbo].[tblSTREET_NAME] WHERE StreetNameID = @RandomStreetNameID)
-    
-    DECLARE @RandomStreetSuffixID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].[tblSTREET_SUFFIX]) + 1)
-    DECLARE @RandomStreetSuffix VARCHAR(25) = (SELECT StreetSuffix FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] WHERE StreetSuffixID = @RandomStreetSuffixID)
-    
-    DECLARE @RandomCityStateZipID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM [PEEPS].[dbo].tblCITY_STATE_ZIP) + 1)
-    DECLARE @RandomZip VARCHAR(5) = (SELECT Zip FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] WHERE CityStateZipID = @RandomCityStateZipID)
+    DECLARE @RandomStreetName VARCHAR(75) = (
+        SELECT TOP 1 StreetName 
+        FROM [PEEPS].[dbo].[tblSTREET_NAME] 
+        ORDER BY NEWID()
+    )
 
-    DECLARE @RandomAddressLine1 VARCHAR(105) = CONCAT(@RandomHouseNumber, ' ', @RandomStreetName, ' ', @RandomStreetSuffix)
+    
+    DECLARE @RandomStreetSuffix VARCHAR(25) = (
+        SELECT TOP 1 StreetSuffix 
+        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] 
+        ORDER BY NEWID()
+    )
+    
+    DECLARE @RandomZip VARCHAR(75) = (
+        SELECT TOP 1 Zip  
+        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] 
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomAddressLine1 VARCHAR(500) = CONCAT(@RandomHouseNumber, ' ', @RandomStreetName, ' ', @RandomStreetSuffix)
 
     EXEC CreateNewAddress
     @AddressLine1  = @RandomAddressLine1,
@@ -252,6 +288,13 @@ WHILE @Run <= @NumberOfAddresses
 
     END
 END
+GO
+
+EXEC PopulateAddresses
+@NumberOfAddresses = 1000
+GO
+
+SELECT * FROM tblADDRESS
 GO
 
 -- Business Rules 
@@ -341,3 +384,14 @@ GO
 
 ALTER TABLE tblCUSTOMER
 ADD CustomerAge AS (dbo.fn_CustomerAge(CustomerID))
+GO
+
+-- Views
+CREATE VIEW CustomerShippingLabelTop10PrioritySeattle AS
+SELECT TOP 10 PriorityID, CustomerFname, CustomerLname, AddressLine1, AddressLine2, Zip, CityName, StateName 
+FROM tblCUSTOMER
+    JOIN tblADDRESS ON tblCUSTOMER.AddressID = tblADDRESS.AddressID
+    JOIN tblCITY ON tblADDRESS.CityID = tblCITY.CityID
+    JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID 
+WHERE CityName = 'Seattle' AND StateName = 'Washington, WA'
+ORDER BY PriorityID ASC
