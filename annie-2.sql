@@ -1,5 +1,5 @@
 -- insert Employee
-CREATE OR ALTER PROCEDURE Ins_Employee
+ALTER PROCEDURE Ins_Employee
     @Ins_EmpFName            VARCHAR(50),
     @Ins_EmpLName            VARCHAR(50),
     @Ins_EmpDOB              DATE,
@@ -13,7 +13,10 @@ DECLARE @EmployeeTypeID INT
     @ET_ID = @EmployeeTypeID OUTPUT
 
     IF @EmployeeTypeID IS NULL
-        THROW 50209, '@EmployeeTypeID is not found', 1;
+    BEGIN     
+    PRINT 'ERROR';
+       THROW 50209, '@EmployeeTypeID is not found', 1;
+    END
 
     BEGIN TRANSACTION T1
         INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
@@ -51,8 +54,7 @@ WHILE @Run > 0
         DECLARE @RandEmpType VARCHAR(50) = (SELECT PT.PositionTypeName 
                                             FROM UNIVERSITY.dbo.tblSTAFF S
                                             JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
-                                            JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
-                                            JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID WHERE S.StaffID = @RandEmpID)*/
+                                            JOIN UNIVER                                JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID WHERE S.StaffID = @RandEmpID)*/
 
         EXEC Ins_Employee
         @Ins_EmpFName = @Emp_Fname,
@@ -79,5 +81,6 @@ VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''
 EXEC PopulateEmployee
 @Run = 50
 
-select * from tblEMPLOYEE
+select * from tblEMPLOYEESITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
+            
 

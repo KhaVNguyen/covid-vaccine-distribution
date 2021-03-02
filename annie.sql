@@ -89,13 +89,14 @@ DECLARE @CityID INT
 
 -- Combined from Kha
 EXEC GetCityID
-@C_Name = @C_CityName
+@C_Name = @C_CityName,
 @C_ID = @CityID
 
 SET @CR_ID = (
     SELECT CarrierID
     FROM tblCARRIER
     WHERE CarrierName = @CR_Name
+    AND CityID = @CityID
 )
 GO
 
@@ -127,6 +128,8 @@ SET @SP_ID = (
     FROM tblSHIPMENT
     WHERE TrackingNumber = @SP_TrackingNum 
     AND ShippingDate = @SP_Date
+    AND ShipmentTypeID = @ShipmentTypeID
+    AND CarrierID = @CarrierID
 )
 GO
 
@@ -167,6 +170,7 @@ SET @E_ID = (
     WHERE EmployeeFName = @E_LName
     AND EmployeeLName = @E_LName
     AND EmployeeDOB = @E_DOB
+    AND EmployeeTypeID = @EmployeeTypeID
 )
 GO
 
@@ -215,13 +219,55 @@ SET @OR_ID = (
     SELECT OrderID
     FROM tblORDER
     WHERE OrderDate = @OR_Date
+    AND CustomerID = @CustomerID
+    AND EmployeeID = @EmployeeID
 )
 GO
+-------------------------- Raw data script --------------------------------------
+-- EMPLOYEE DATA
+CREATE TABLE  tblRAW_EmpData-- CREATE SCRIPT TABLE
+(Emp_PK_ID INT IDENTITY (1,1) primary key,
+Emp_FName VARCHAR(50) NOT NULL,
+Emp_LName VARCHAR(50) NOT NULL,
+Emp_DOB DATE NOT NULL)
+
+INSERT INTO tblRAW_EmpData -- INSERT DATA FROM ORIGINAL TABLE/DATASET
+(Emp_FName, Emp_LName, Emp_DOB)
+SELECT CustomerFname, CustomerLname, DateOfBirth
+FROM PEEPS.dbo.tblCUSTOMER
+
+-- EMPLOYEE TYPE DATA
+INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc) 
+VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
+
+-- Carrier DATA
+SELECT *, ROW_NUMBER() OVER(ORDER BY CityID) AS I INTO Temp FROM tblCITY
+DECLARE @I INT = (SELECT COUNT(*) FROM tblCITY)
+WHILE @I > 0
+BEGIN
+    DECLARE @CityID INT = (
+        SELECT CityID FROM Temp WHERE I = @I
+    )
+    INSERT INTO tblCARRIER(CarrierName, CityID)
+    VALUES('UPS', @CityID),('USPS', @CityID),('DHL', @CityID),('FedEx', @CityID)
+    SET @I = @I - 1
+END
+
+IF EXISTS (SELECT TOP 1 * FROM Temp)
+     DROP TABLE Temp
+
+ SELECT * FROM tblCARRIER
+
+
+-- Shipment Type Data 
+INSERT INTO tblSHIPMENT_TYPE(ShipmentTypeName, ShipmentTypeDesc)
+VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Estimated 1-3 days'), ('Parcel', 'Estimated 2-8 days'), ('First Class', 'Estimated 1–3 days up to 13 oz')
+
 
 -------------------------- Insert Sproc --------------------------------------
 
 -- Insert shipment 
-CREATE PROCEDURE Ins_Shipment
+ALTER PROCEDURE Ins_Shipment
     @InsSP_TrackingNum         VARCHAR(50),
     @InsSP_Date                DATETIME,
     @InsSP_ShipmentTypeName    VARCHAR(50),
@@ -280,73 +326,67 @@ DECLARE @EmployeeTypeID INT
 GO
 
 -------------------------- Populate EmployeeData --------------------------------------
-/*CREATE OR ALTER PROCEDURE PopulateEmployeeInfo
+INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
+SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2 
+FROM tblRAW_EmpData
+
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Executive')
+WHERE EmployeeID LIKE '%51' 
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Part-Time')
+WHERE EmployeeID LIKE '%3_'
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Contingent')
+WHERE EmployeeID LIKE '%72'
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Temporary')
+WHERE EmployeeID LIKE '%84'
+
+UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Full-Time')
+
+SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E 
+        JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
+GROUP BY ET.EmployeeTypeName
+
+IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
+     DROP TABLE tblRAW_EmpData
+
+
+CREATE PROCEDURE PopulateShipment
+@NumsShipment INT
 AS
-BEGIN
-SELECT S.StaffFName, S.StaffLName, S.StaffBirth, PT.PositionTypeName 
-    FROM UNIVERSITY.dbo.tblSTAFF S
-    JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
-    JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
-    JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID
-
 DECLARE @Run INT = 1
-DECLARE @NumRows INT = (SELECT COUNT(*) FROM UNIVERSITY.dbo.tblSTAFF)
-DECLARE @Emp_Firsty VARCHAR(20),@Emp_Lasty VARCHAR(20), @Emp_Birthy DATE, @Emp_Type VARCHAR(20), @Emp_TypeID INT
-
-WHILE @Run <= @NumRows
+DECLARE @Shipment_TrackingNum VARCHAR(50), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50), @Shipment_CityName VARCHAR(50)
+DECLARE @ShipmentTypeCount INT = (SELECT COUNT(*) FROM tblSHIPMENT_TYPE)
+DECLARE @CarrierCount INT = (SELECT COUNT(*) FROM tblCARRIER)
+DECLARE @ShipmentType_ID INT, @Carrier_ID INT
+WHILE @RUN <= @NumsShipment
     BEGIN
-            SET @Emp_Firsty = (SELECT TOP 1 StaffFName FROM #EmployeeWorkingData)
-            SET @Emp_Lasty = (SELECT TOP 1 StaffLName FROM #EmployeeWorkingData)
-            SET @Emp_Birthy = (SELECT TOP 1 StaffBirth FROM #EmployeeWorkingData)
-            SET @Emp_Type = (SELECT TOP 1 PositionTypeName FROM #EmployeeWorkingData)
-        
-            EXEC GetEmployeeTypeID
-            @ET_Name = @Emp_Type,
-            @ET_ID = @Emp_TypeID OUTPUT
-
-            INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
-            VALUES(@Emp_Firsty, @Emp_Lasty, @Emp_Birthy, @Emp_TypeID)
-            --DELETE TOP(1) FROM #EmployeeWorkingData
+            -- Get random shipmentTypeID 
+            SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
+            SET @Shipment_TypeName = (SELECT ShipmentTypeName FROM tblSHIPMENT_TYPE WHERE ShipmentTypeID = @ShipmentType_ID)
+            -- Get random carrierID
+            SET @Carrier_ID = (SELECT RAND() * @CarrierCount + 1)
+            SET @Shipment_CarrierName = (SELECT CarrierName FROM tblCARRIER WHERE CarrierID = @Carrier_ID)
+            SET @Shipment_CityName = (SELECT C.CityName FROM tblCITY C JOIN tblCARRIER CR
+                                                        ON C.CityID = CR.CityID WHERE CarrierID = @Carrier_ID)
+            EXEC Ins_Shipment
+            @InsSP_TrackingNum = @Shipment_TrackingNum,
+            @InsSP_Date = @Shipment_Date,
+            @InsSP_ShipmentTypeName = @Shipment_TypeName,
+            @InsSP_CarrierName = @Shipment_CarrierName,
+            @InsSP_CityName = @Shipment_CityName
         SET @RUN = @RUN + 1
     END
-END
-
-SELECT TOP 10 * FROM UNIVERSITY.dbo.tblSTAFF*/
-
-CREATE OR ALTER PROCEDURE PopulateEmployee
-@NumsEmp INTEGER
-AS
-BEGIN
-DECLARE @Run INT = 1
-WHILE @Run <= @NumsEmp
-    BEGIN 
-        DECLARE @RandEmpID INTEGER = FLOOR(RAND() * (SELECT COUNT(*) FROM UNIVERSITY.dbo.tblSTAFF) + 1)
-        DECLARE @RandEmpFName VARCHAR(20) = (SELECT StaffFName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
-        DECLARE @RandEmpLName VARCHAR(20) = (SELECT StaffLName FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
-        DECLARE @RandEmpDOB DATE = (SELECT StaffBirth FROM UNIVERSITY.dbo.tblSTAFF WHERE StaffID = @RandEmpID)
-        DECLARE @RandEmpType VARCHAR(20) = (SELECT PT.PositionTypeName 
-    FROM UNIVERSITY.dbo.tblSTAFF S
-    JOIN UNIVERSITY.dbo.tblSTAFF_POSITION SP ON S.StaffID = SP.StaffID
-    JOIN UNIVERSITY.dbo.tblPOSITION P ON SP.PositionID = P.PositionID
-    JOIN UNIVERSITY.dbo.tblPOSITION_TYPE PT ON P.PositionTypeID = PT.PositionTypeID WHERE S.StaffID = @RandEmpID)
-
-        EXEC Ins_Employee
-        @Ins_EmpFName = @RandEmpFName,
-        @Ins_EmpLName = @RandEmpLName,
-        @Ins_EmpDOB = @RandEmpDOB,
-        @Ins_EmpTypeName = @RandEmpType
-
-        SET @Run = @Run + 1
-
-        END
-    END
 GO
-
-SELECT * FROM tblEMPLOYEE
-
-
-
-
+-- Test 
+EXEC PopulateShipment
+@NumsShipment = 10000
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
@@ -376,8 +416,8 @@ ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
 CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
 GO
 
--- 2. Employee with less than 18 years old should not be full-time
-CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder18ForFullTime()
+-- 2. Employee with less than 21 years old should not be full-time
+CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder21ForFullTime()
 RETURNS INTEGER
 AS
 BEGIN
@@ -385,7 +425,7 @@ DECLARE @RET INTEGER = 0
 IF EXISTS (SELECT EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, CAST(DATEDIFF(day, GETDATE(), EmployeeDOB) / 365.25 AS INT) AS Age, E.EmployeeTypeID  
             FROM tblEMPLOYEE E
             JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
-            WHERE CAST(DATEDIFF(day, GETDATE(), EmployeeDOB) / 365.25 AS INT) < 18
+            WHERE CAST(DATEDIFF(day, GETDATE(), EmployeeDOB) / 365.25 AS INT) < 21
             AND ET.EmployeeTypeName = 'Full-Time'
             GROUP BY EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, E.EmployeeTypeID
         )
@@ -397,34 +437,49 @@ END
 GO
 
 ALTER TABLE tblEMPLOYEE with nocheck
-ADD CONSTRAINT CK_EmployeeMustBeOlder18ForFullTime
-CHECK (dbo.fn_EmployeeMustBeOlder18ForFullTime() = 0)
+ADD CONSTRAINT CK_EmployeeMustBeOlder21ForFullTime
+CHECK (dbo.fn_EmployeeMustBeOlder21ForFullTime() = 0)
 GO
 
 -------------------------- Computed Columns --------------------------------------
 
--- need to check 
--- 1. Top 10 order states
+-- 1. Total order in each state in the U.S.
 
-CREATE FUNCTION FN_Top10_OrderStates (@PK INT) 
+CREATE FUNCTION FN_TotalOrderStates(@PK INT) 
 RETURNS INT
 AS
 BEGIN
 
-DECLARE @RET INT = (SELECT TOP 10 COUNT(O.OrderID) AS NumOrder, S.StateName
-FROM tblORDER O
-    JOIN tblCUSTOMER CS ON O.CustomerID = CS.CustomerID
-    JOIN tblADDRESS A ON CS.AddressID = A.AddressID
-    JOIN tblCITY C ON A.CityID = C.CityID
-    JOIN tblSTATE S ON C.StateID = S.StateID
-)
+DECLARE @RET INT = (SELECT COUNT(O.OrderID)
+                    FROM tblORDER O
+                        JOIN tblCUSTOMER CS ON O.CustomerID = CS.CustomerID
+                        JOIN tblADDRESS A ON CS.AddressID = A.AddressID
+                        JOIN tblCITY C ON A.CityID = C.CityID
+                        JOIN tblSTATE S ON C.StateID = S.StateID
+                        WHERE S.StateID = @PK
+                    )
 
 RETURN @RET
 END
 GO
 
-ALTER TABLE tblROOM
-ADD TototalAmenityPoints AS (dbo.FN_TotalRoomAmenities (RoomID)) 
+ALTER TABLE tblSTATE
+ADD TototalOrder AS (dbo.FN_TotalOrderStates (StateID)) 
 GO
 
--- 2.
+-- 2. Total order of each product
+CREATE FUNCTION FN_TotalOrderEachProduct(@PK INT)
+RETURNS INT
+AS
+BEGIN 
+    DECLARE @RET INT = (SELECT COUNT(OP.OrderID)
+                        FROM tblORDER_PRODUCT OP
+                        JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
+                        WHERE P.ProductID = @PK)
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblORDER
+ADD TotalOrderProduct AS (dbo.FN_TotalOrderEachProduct (ProductID)) 
+GO
