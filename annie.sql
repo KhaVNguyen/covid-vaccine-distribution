@@ -240,6 +240,26 @@ FROM PEEPS.dbo.tblCUSTOMER
 INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc) 
 VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
 
+-- Carrier DATA // neeed to check 
+SELECT *, ROW_NUMBER() OVER(ORDER BY CityID) AS I INTO Temp FROM tblCITY
+DECLARE @I INT = (SELECT COUNT(*) FROM tblCITY)
+WHILE @I > 0
+BEGIN
+    DECLARE @CityID INT = (
+        SELECT CityID FROM Temp WHERE I = @I
+    )
+    INSERT INTO tblCARRIER(CarrierName, CityID) 
+    VALUES('UPS', @CityID),('USPS', @CityID),('DHL', @CityID),('FedEx', @CityID)
+
+    SET @I = @I - 1
+END
+
+IF EXISTS (SELECT TOP 1 * FROM Temp)
+    DROP TABLE Temp
+
+SELECT * FROM tblCARRIER
+
+
 -------------------------- Insert Sproc --------------------------------------
 
 -- Insert shipment 
@@ -328,6 +348,9 @@ UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_
 SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E 
         JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
 GROUP BY ET.EmployeeTypeName
+
+IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
+    DROP TABLE tblRAW_EmpData
 
 SELECT * FROM tblEMPLOYEE
 
