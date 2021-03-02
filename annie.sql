@@ -355,18 +355,44 @@ GROUP BY ET.EmployeeTypeName
 
 IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
      DROP TABLE tblRAW_EmpData
+GO
 
+CREATE OR ALTER PROCEDURE GenerateTrackingNumber 
+@Output VARCHAR(12) OUTPUT
+AS
+BEGIN
+    DECLARE @Result VARCHAR(12) = ''
+    DECLARE @Run INT = 1
+    WHILE @Run <= 12
+        BEGIN
+            DECLARE @RandomNumber INT = FLOOR(RAND() * 10) 
+            SET @Result = CONCAT(@Result, @RandomNumber)
+            SET @Run = @Run + 1
+        END
+    SET @Output = @Result
+END
+GO
+
+DECLARE @TrackingNum VARCHAR(12)
+EXEC GenerateTrackingNumber @Output = @TrackingNum OUTPUT
+PRINT (@TrackingNum)
+GO
 
 CREATE PROCEDURE PopulateShipment
 @NumsShipment INT
 AS
 DECLARE @Run INT = 1
-DECLARE @Shipment_TrackingNum VARCHAR(50), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50), @Shipment_CityName VARCHAR(50)
+DECLARE @Shipment_TrackingNum VARCHAR(12), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50), @Shipment_CityName VARCHAR(50)
 DECLARE @ShipmentTypeCount INT = (SELECT COUNT(*) FROM tblSHIPMENT_TYPE)
 DECLARE @CarrierCount INT = (SELECT COUNT(*) FROM tblCARRIER)
 DECLARE @ShipmentType_ID INT, @Carrier_ID INT
 WHILE @RUN <= @NumsShipment
     BEGIN
+            -- Generate random tracking number
+            EXEC GenerateTrackingNumber
+            @Output = @Shipment_TrackingNum OUTPUT 
+            -- Generate rnadom date
+            SET @Shipment_Date = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 31), '2020-01-01')
             -- Get random shipmentTypeID 
             SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
             SET @Shipment_TypeName = (SELECT ShipmentTypeName FROM tblSHIPMENT_TYPE WHERE ShipmentTypeID = @ShipmentType_ID)
