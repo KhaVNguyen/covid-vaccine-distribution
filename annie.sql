@@ -240,7 +240,7 @@ FROM PEEPS.dbo.tblCUSTOMER
 INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc) 
 VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
 
--- Carrier DATA // neeed to check 
+-- Carrier DATA
 SELECT *, ROW_NUMBER() OVER(ORDER BY CityID) AS I INTO Temp FROM tblCITY
 DECLARE @I INT = (SELECT COUNT(*) FROM tblCITY)
 WHILE @I > 0
@@ -248,16 +248,20 @@ BEGIN
     DECLARE @CityID INT = (
         SELECT CityID FROM Temp WHERE I = @I
     )
-    INSERT INTO tblCARRIER(CarrierName, CityID) 
+    INSERT INTO tblCARRIER(CarrierName, CityID)
     VALUES('UPS', @CityID),('USPS', @CityID),('DHL', @CityID),('FedEx', @CityID)
-
     SET @I = @I - 1
 END
 
 IF EXISTS (SELECT TOP 1 * FROM Temp)
-    DROP TABLE Temp
+     DROP TABLE Temp
 
-SELECT * FROM tblCARRIER
+ SELECT * FROM tblCARRIER
+
+
+-- Shipment Type Data 
+INSERT INTO tblSHIPMENT_TYPE(ShipmentTypeName, ShipmentTypeDesc)
+VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Estimated 1-3 days'), ('Parcel', 'Estimated 2-8 days'), ('First Class', 'Estimated 1–3 days up to 13 oz')
 
 
 -------------------------- Insert Sproc --------------------------------------
@@ -350,9 +354,39 @@ SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E
 GROUP BY ET.EmployeeTypeName
 
 IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
-    DROP TABLE tblRAW_EmpData
+     DROP TABLE tblRAW_EmpData
 
-SELECT * FROM tblEMPLOYEE
+
+CREATE PROCEDURE PopulateShipment
+@NumsShipment INT
+AS
+DECLARE @Run INT = 1
+DECLARE @Shipment_TrackingNum VARCHAR(50), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50), @Shipment_CityName VARCHAR(50)
+DECLARE @ShipmentTypeCount INT = (SELECT COUNT(*) FROM tblSHIPMENT_TYPE)
+DECLARE @CarrierCount INT = (SELECT COUNT(*) FROM tblCARRIER)
+DECLARE @ShipmentType_ID INT, @Carrier_ID INT
+WHILE @RUN <= @NumsShipment
+    BEGIN
+            -- Get random shipmentTypeID 
+            SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
+            SET @Shipment_TypeName = (SELECT ShipmentTypeName FROM tblSHIPMENT_TYPE WHERE ShipmentTypeID = @ShipmentType_ID)
+            -- Get random carrierID
+            SET @Carrier_ID = (SELECT RAND() * @CarrierCount + 1)
+            SET @Shipment_CarrierName = (SELECT CarrierName FROM tblCARRIER WHERE CarrierID = @Carrier_ID)
+            SET @Shipment_CityName = (SELECT C.CityName FROM tblCITY C JOIN tblCARRIER CR
+                                                        ON C.CityID = CR.CityID WHERE CarrierID = @Carrier_ID)
+            EXEC Ins_Shipment
+            @InsSP_TrackingNum = @Shipment_TrackingNum,
+            @InsSP_Date = @Shipment_Date,
+            @InsSP_ShipmentTypeName = @Shipment_TypeName,
+            @InsSP_CarrierName = @Shipment_CarrierName,
+            @InsSP_CityName = @Shipment_CityName
+        SET @RUN = @RUN + 1
+    END
+GO
+-- Test 
+EXEC PopulateShipment
+@NumsShipment = 10000
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
