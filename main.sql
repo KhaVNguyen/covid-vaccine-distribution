@@ -38,9 +38,21 @@ CREATE TABLE tblCARRIER     --with FK
 (
     CarrierID INTEGER IDENTITY(1,1) PRIMARY KEY,
     CarrierName VARCHAR(50) NOT NULL,
-    CityID INTEGER FOREIGN KEY REFERENCES tblCITY(CityID)
+    CityID INTEGER FOREIGN KEY REFERENCES tblCITY(CityID) -- DO NOT NEED
 );
 GO
+
+/*ALTER TABLE tblCARRIER
+DROP CONSTRAINT FK_CityID
+GO
+
+ALTER TABLE tblCARRIER
+DROP COLUMN CityID
+GO
+
+select * from tblCARRIER
+
+delete from tblCARRIER where CarrierID > 2411728*/
 
 CREATE TABLE tblSHIPMENT_TYPE
 (
@@ -352,23 +364,15 @@ GO
 -- GET CarrierID
 CREATE OR ALTER PROCEDURE GetCarrierID
     @CR_Name    VARCHAR(50),
-    @C_CityName VARCHAR(50),
     @CR_ID      INT OUTPUT
 AS
-IF @CR_Name IS NULL OR @C_CityName IS NULL
-    THROW 50202, 'Carrier Name or City Name is null', 1; 
-DECLARE @CityID INT
-
--- Combined from Kha
-EXEC GetCityID
-@C_Name = @C_CityName,
-@C_ID = @CityID
+IF @CR_Name IS NULL
+    THROW 50202, 'Carrier Name is null', 1; 
 
 SET @CR_ID = (
     SELECT CarrierID
     FROM tblCARRIER
     WHERE CarrierName = @CR_Name
-        AND CityID = @CityID
 )
 GO
 
@@ -378,11 +382,10 @@ CREATE OR ALTER PROCEDURE GetShipmentID
     @SP_Date                DATETIME,
     @SP_ShipmentTypeName    VARCHAR(50),
     @SP_CarrierName         VARCHAR(50),
-    @SP_CityName            VARCHAR(50),
     @SP_ID                  INT OUTPUT
 AS
 IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR 
-    @SP_CarrierName IS NULL OR @SP_CityName IS NULL 
+    @SP_CarrierName IS NULL
     THROW 50203, 'None of parameter should not be null', 1; 
 DECLARE @ShipmentTypeID INT, @CarrierID INT
 
@@ -392,7 +395,6 @@ EXEC GetShipmentTypeID
 
 EXEC GetCarrierID
 @CR_Name = @SP_CarrierName,
-@C_CityName = @SP_CityName,
 @CR_ID = @CarrierID
 
 SET @SP_ID = (
