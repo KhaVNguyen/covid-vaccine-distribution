@@ -207,7 +207,7 @@ EXEC GetEmployeeID
 @E_LName = @OR_EmpLName,
 @E_DOB = @OR_EmpDOB,
 @E_EmployeeTypeName = @OR_EmpTypeName,
-@E_ID = @EmployeeID
+@E_ID = @EmployeeID OUTPUT
 
 -- combined from Kha 
 EXEC GetCustomerID
@@ -215,7 +215,7 @@ EXEC GetCustomerID
 @C_Lname = @OR_CustLname,
 @C_DOB = @OR_CustDOB,
 @C_Email= @OR_CustEmail,
-@C_ID = @CustomerID
+@C_ID = @CustomerID OUTPUT
 
 SET @OR_ID = (
     SELECT OrderID
@@ -421,7 +421,7 @@ GO
 
 -- Test 
 EXEC PopulateShipment
-@NumsShipment = 100
+@NumsShipment = 5
 
 SELECT * FROM tblCARRIER
 

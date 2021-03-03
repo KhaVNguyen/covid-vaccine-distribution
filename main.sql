@@ -306,7 +306,7 @@ IF @PriorityID IS NULL
     THROW 50301, 'Could not find that priority type', 1;
 
 EXEC GetCustomerTypeID
-@_Name = @C_CustTypeName,
+@_CustomerTypeName = @C_CustTypeName,
 @_Out = @CustomerTypeID
 
 IF @CustomerTypeID IS NULL
@@ -349,14 +349,8 @@ CREATE OR ALTER PROCEDURE GetCarrierID
     @CR_Name    VARCHAR(50),
     @CR_ID      INT OUTPUT
 AS
-IF @CR_Name IS NULL OR @C_CityName IS NULL
+IF @CR_Name IS NULL
     THROW 50202, 'Carrier Name or City Name is null', 1;
-DECLARE @CityID INT
-
--- Combined from Kha
-EXEC GetCityID
-@C_Name = @C_CityName,
-@C_ID = @CityID
 
 SET @CR_ID = (
     SELECT CarrierID
@@ -374,7 +368,7 @@ CREATE OR ALTER PROCEDURE GetShipmentID
     @SP_ID                  INT OUTPUT
 AS
 IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR
-    @SP_CarrierName IS NULL OR @SP_CityName IS NULL
+    @SP_CarrierName IS NULL
     THROW 50203, 'None of parameter should not be null', 1;
 DECLARE @ShipmentTypeID INT, @CarrierID INT
 
@@ -449,6 +443,13 @@ CREATE OR ALTER PROCEDURE GetOrderID
     @OR_CustLname       VARCHAR(50),
     @OR_CustDOB         DATE,
     @OR_CustEmail       VARCHAR(50),
+    @OR_CustTypeName VARCHAR(50),
+    @OR_Pname VARCHAR(50),
+    @OR_ALine1 VARCHAR(100),
+    @OR_ALine2 VARCHAR(100),
+    @OR_AZip VARCHAR(5),
+    @OR_ACityName VARCHAR(50),
+    @OR_AStateName VARCHAR(50),
     @OR_ID              INT OUTPUT
 AS
 IF  @OR_Date IS NULL OR
@@ -459,7 +460,14 @@ IF  @OR_Date IS NULL OR
     @OR_CustFname IS NULL OR
     @OR_CustLname IS NULL OR
     @OR_CustDOB IS NULL OR
-    @OR_CustEmail IS NULL
+    @OR_CustEmail IS NULL OR
+    @OR_CustTypeName IS NULL OR
+    @OR_Pname IS NULL OR
+    @OR_ALine1 IS NULL OR
+    @OR_ALine2 IS NULL OR
+    @OR_AZip IS NULL OR
+    @OR_ACityName IS NULL OR
+    @OR_AStateName IS NULL
     THROW 50206, 'None of parameter should not be null', 1;
 
 DECLARE @EmployeeID INT, @CustomerID INT
@@ -477,6 +485,13 @@ EXEC GetCustomerID
 @C_Lname = @OR_CustLname,
 @C_DOB = @OR_CustDOB,
 @C_Email= @OR_CustEmail,
+@C_CustTypeName = @OR_CustTypeName,
+@C_Pname = @OR_Pname,
+@C_ALine1 = @OR_ALine1,
+@C_ALine2 = @OR_ALine2,
+@C_AZip = @OR_AZip,
+@C_ACityName = @OR_ACityName,
+@C_AStateName = @OR_AStateName,
 @C_ID = @CustomerID
 
 SET @OR_ID = (
