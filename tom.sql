@@ -110,7 +110,7 @@ AS
 
 		IF @@ERROR <> 0
 		BEGIN
-			ROLLBACK TRAN T1
+			ROLLBACK TRAN T1;
 			THROW 51001, 'Something went wrong', 1;
 		END
 	COMMIT TRAN T1
@@ -135,7 +135,7 @@ AS
 
 		IF @@ERROR <> 0
 		BEGIN
-			ROLLBACK TRAN T1
+			ROLLBACK TRAN T1;
 			THROW 52001, 'Something went wrong', 1;
 		END
 	COMMIT TRAN T1
@@ -144,39 +144,61 @@ GO
 CREATE OR ALTER PROC Ins_ProductDetail
 @ProductName VARCHAR(50),
 @DetailName VARCHAR(50),
-@DetailDesc VARCHAR(1000),
 @Value VARCHAR(1000)
 AS
 	DECLARE @ProductID INT
 	EXEC GetProductID
 	@_ProductName = @ProductName,
 	@_Out = @ProductID OUTPUT
-
+	
 	IF @ProductID IS NULL
 		THROW 53000, 'Product not found', 1;
 
+	DECLARE @DetailID INT
+	EXEC GetDetailID
+	@_DetailName = @DetailName,
+	@_Out = @DetailID OUTPUT
+	
+	IF @DetailName IS NULL
+		THROW 53001, 'Detail not found', 1;
+
 	BEGIN TRAN T1
-		INSERT INTO tblDETAIL (DetailName, DetailDesc)
-		VALUES (@DetailName, @DetailDesc)
-
-		DECLARE @DetailID INT = (SCOPE_IDENTITY())
-
 		INSERT INTO tblPRODUCT_DETAIL (ProductID, DetailID, [Value])
 		VALUES (@ProductID, @DetailID, @Value)
 
 		IF @@ERROR <> 0
 		BEGIN
-			ROLLBACK TRAN T1
-			THROW 53001, 'Something went wrong', 1;
+			ROLLBACK TRAN T1;
+			THROW 53002, 'Something went wrong', 1;
 		END
 	COMMIT TRAN T1
 GO
 
 ---------------------------------------------------------------------------------------------------
--- Populate tblPRODUCT, tblPRODUCT_DETAIL, tblDETAIL
+-- Populate Look-Up Tables: tblSUPPLIER, tblDETAIL
 ---------------------------------------------------------------------------------------------------
-SELECT *, ROW_NUMBER() OVER(ORDER BY CityID) AS I INTO Temp FROM tblCITY
+-- The data below is taken from https://en.wikipedia.org/wiki/COVID-19_vaccine
+IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
+	INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc) VALUES
+	('Pfizer–BioNTech', 'The best vaccine right now, collaborate effort from United States and Germany.'),
+	('Gamaleya Research Institute', 'The first ever vaccine from Russia.'),
+	('Oxford–AstraZeneca', 'Also a good vaccine from United Kingdom.'),
+	('Sinopharm', 'Kinda shady vaccine from China.'),
+	('Sinovac', 'Also kinda shady vaccine from China.'),
+	('Moderna', 'On par with Pfizer, and made from United States.'),
+	('Johnson & Johnson', 'This is the new one from United States and Netherlands.')
 
+IF NOT EXISTS (SELECT TOP 1 * FROM tblDETAIL)
+	INSERT INTO tblDETAIL (DetailName, DetailDesc) VALUES
+	('Minimum Temperature', 'Minimum temperature in celsius that the product can withstand.'),
+	('Maximum Temperature', 'Maximum temperature in celsius that the product can withstand'),
+	('Recommended Temperature', 'Recommended temperature in celsius for storing the product'),
+	('Weight', 'Weight in grams for a single product unit.')
+
+---------------------------------------------------------------------------------------------------
+-- Populate Transaction Tables: tblPRODUCT, tblPRODUCT_DETAIL, tblDETAIL
+---------------------------------------------------------------------------------------------------
+SELECT *, ROW_NUMBER() OVER(ORDER BY SupplierID) AS RowNumber INTO Temp_tblSUPPLIER FROM tblSUPPLIER
 CREATE OR ALTER PROC PopulateProduct
 @N INT
 AS
@@ -184,7 +206,7 @@ AS
 	WHILE @Run <= @N
 	BEGIN
 		DECLARE @RandProductName VARCHAR(50) = (
-			-- This line of code was taken from https://www.sqlteam.com/forums/topic.asp?TOPIC_ID=21132
+			-- This line of code was taken and modified from https://www.sqlteam.com/forums/topic.asp?TOPIC_ID=21132
 			SELECT CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
 				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
 				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
@@ -196,37 +218,47 @@ AS
 			'This is a random product description given a number of ' + CAST(RAND() AS VARCHAR(10))
 		)
 
-		DECLARE @RandSupplierID INT = FLOOR(RAND() * (SELECT COUNT(*) FROM tblSUPPLIER) + 1)
-		DECLARE @RandSupplierName VARCHAR(50) = (SELECT SupplierName FROM tblSUPPLIER WHERE SupplierID = @RandSupplierID)
+		DECLARE @RandSupplierRowNumber INT = FLOOR(RAND() * (SELECT COUNT(*) FROM tblSUPPLIER) + 1)
+		DECLARE @RandSupplierName VARCHAR(50) = (SELECT SupplierName FROM Temp_tblSUPPLIER WHERE RowNumber = @RandSupplierRowNumber)
 
-		EXEC AddProduct
+		EXEC Ins_Product
 		@ProductName = @RandProductName,
 		@ProductDesc = @RandProductDesc,
 		@SupplierName = @RandSupplierName
+
+		DECLARE @RandMinTemp INT = RAND() * -100
+		EXEC Ins_ProductDetail
+		@ProductName = @RandProductName,
+		@DetailName = 'Minimum Temperature',
+		@Value = @RandMinTemp
+
+		DECLARE @RandMaxTemp INT = @RandMinTemp + RAND() * 10
+		EXEC Ins_ProductDetail
+		@ProductName = @RandProductName,
+		@DetailName = 'Maximum Temperature',
+		@Value = @RandMaxTemp
+
+		DECLARE @RandRecTemp INT = @RandMaxTemp - RAND() * 5
+		EXEC Ins_ProductDetail
+		@ProductName = @RandProductName,
+		@DetailName = 'Recommended Temperature',
+		@Value = @RandRecTemp
+
+		DECLARE @RandWeight INT = RAND() * 10
+		EXEC Ins_ProductDetail
+		@ProductName = @RandProductName,
+		@DetailName = 'Weight',
+		@Value = @RandWeight
 
 		SET @Run = @Run + 1
 	END
 GO
 
----------------------------------------------------------------------------------------------------
--- Populate Look-Up Tables
----------------------------------------------------------------------------------------------------
--- The data below is taken from https://en.wikipedia.org/wiki/COVID-19_vaccine
-IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
-	INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc) VALUES
-	('Pfizer–BioNTech', 'United States, Germany'),
-	('Gamaleya Research Institute', 'Russia'),
-	('Oxford–AstraZeneca', 'United Kingdom'),
-	('Sinopharm', 'China'),
-	('Sinovac', 'China'),
-	('Moderna', 'United States'),
-	('Johnson & Johnson', 'United States, Netherlands')
+IF (SELECT COUNT(*) FROM tblPRODUCT) <> 100
+	EXEC PopulateProduct @N = 100
 
-SELECT * FROM tblSUPPLIER
-DELETE FROM tblSUPPLIER
-DBCC CHECKIDENT ('tblSUPPLIER', RESEED, 0)
-
-
+IF EXISTS (SELECT TOP 1 * FROM Temp_tblSUPPLIER)
+	DROP TABLE Temp_tblSUPPLIER
 
 ---------------------------------------------------------------------------------------------------
 -- Check constraints
@@ -239,3 +271,11 @@ DBCC CHECKIDENT ('tblSUPPLIER', RESEED, 0)
 ---------------------------------------------------------------------------------------------------
 -- Views
 ---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+-- Ignore: Debug Code
+---------------------------------------------------------------------------------------------------
+SELECT * FROM tblDETAIL
+SELECT * FROM tblSUPPLIER
+DELETE FROM tblSUPPLIER
+DBCC CHECKIDENT ('tblDETAIL', RESEED, 0)

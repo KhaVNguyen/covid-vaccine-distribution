@@ -327,8 +327,6 @@ SET @C_ID = (
 
 GO
 
-
-
 -- Annie
 -- GET ShipmentTypeID
 CREATE OR ALTER PROCEDURE GetShipmentTypeID
@@ -537,9 +535,9 @@ SELECT * FROM tblCARRIER
 SELECT * FROM tblPACKAGE -- not done yet
 SELECT * FROM tblORDER -- not done yet
 SELECT * FROM tblORDER_PRODUCT -- not done yet
-SELECT * FROM tblPRODUCT -- not done yet
-SELECT * FROM tblPRODUCT_DETAIL -- not done yet
-SELECT * FROM tblSUPPLIER -- not done yet
+SELECT * FROM tblPRODUCT
+SELECT * FROM tblPRODUCT_DETAIL
+SELECT * FROM tblSUPPLIER
 SELECT * FROM tblEMPLOYEE
 SELECT * FROM tblCUSTOMER
 SELECT * FROM tblSHIPMENT -- not done yet
