@@ -496,5 +496,62 @@ SET @OR_ID = (
         AND EmployeeID = @EmployeeID
 )
 GO
+---------------------------------------------------------------------------------------------------
+-- Insert Stored Procedure 
+---------------------------------------------------------------------------------------------------
 
+
+---------------------------------------------------------------------------------------------------
+-- Populating Data
+---------------------------------------------------------------------------------------------------
+--code here
+
+---------------------------------------------------------------------------------------------------
+-- Synthetic Trans
+---------------------------------------------------------------------------------------------------
+--code here
+
+
+---------------------------------------------------------------------------------------------------
+-- Business Rules
+---------------------------------------------------------------------------------------------------
+--code here
+
+
+---------------------------------------------------------------------------------------------------
+-- Computed Columns
+---------------------------------------------------------------------------------------------------
+--code here
+
+
+---------------------------------------------------------------------------------------------------
+-- Complex Queries (Views)
+---------------------------------------------------------------------------------------------------
+--code here
+
+
+---------------------------------------------------------------------------------------------------
+-- Checking Tables
+---------------------------------------------------------------------------------------------------
+-- lookups
+SELECT * FROM tblSHIPMENT_TYPE
+SELECT * FROM tblEMPLOYEE_TYPE
+SELECT * FROM tblSTATE
+SELECT * FROM tblPRIORITY
+SELECT * FROM tblCUSTOMER_TYPE -- not done yet
+SELECT * FROM tblDETAIL -- not done yet
+
+-- tables with FK
+SELECT * FROM tblCARRIER
+SELECT * FROM tblPACKAGE -- not done yet
+SELECT * FROM tblORDER -- not done yet
+SELECT * FROM tblORDER_PRODUCT -- not done yet
+SELECT * FROM tblPRODUCT -- not done yet
+SELECT * FROM tblPRODUCT_DETAIL -- not done yet
+SELECT * FROM tblSUPPLIER -- not done yet
+SELECT * FROM tblEMPLOYEE
+SELECT * FROM tblCUSTOMER
+SELECT * FROM tblSHIPMENT -- not done yet
+SELECT * FROM tblCITY
+SELECT * FROM tblADDRESS
 
