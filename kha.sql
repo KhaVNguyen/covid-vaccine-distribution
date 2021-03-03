@@ -80,7 +80,7 @@ AS
 SET @C_ID = (SELECT CityID FROM tblCITY WHERE CityName = @C_Name)
 GO
 
-CREATE PROCEDURE GetAddressID
+CREATE OR ALTER PROCEDURE GetAddressID
 @A_Line1 VARCHAR(100),
 @A_Line2 VARCHAR(100),
 @A_Zip VARCHAR(5),
@@ -92,11 +92,11 @@ DECLARE @CityID INT, @StateID INT
 
 EXEC GetCityID 
 @C_Name = @A_CityName,
-@C_ID = @CityID
+@C_ID = @CityID OUTPUT
 
 EXEC GetStateID 
 @S_Name = @A_StateName,
-@S_ID = @StateID
+@S_ID = @StateID OUTPUT
 
 SET @A_ID = (
     SELECT AddressID 
@@ -125,8 +125,6 @@ GO
 -- @C_
 -- AS
 -- DECLARE @AddressID INT, @PriorityID INT, @CustomerTypeID INT
-
-
 
 /* Data Inserting Procedures */
 
@@ -295,6 +293,174 @@ EXEC PopulateAddresses
 GO
 
 SELECT * FROM tblADDRESS
+GO
+
+-- Customers 
+CREATE OR ALTER PROCEDURE 
+CreateNewCustomer
+@CustomerFname VARCHAR(50),
+@CustomerLname VARCHAR(50),
+@CustomerDOB DATE,
+@CustomerAddressLine1 VARCHAR(100),
+@CustomerAddressLine2 VARCHAR(100),
+@CustomerZip VARCHAR(5),
+@CustomerCityName VARCHAR(100),
+@CustomerStateName VARCHAR(100),
+@CustomerEmail VARCHAR(50),
+@Priority VARCHAR(50),
+@CustomerType VARCHAR(50)
+AS
+BEGIN
+
+DECLARE @AddressID INT, @PriorityID INT, @CustomerTypeID INT
+
+EXEC GetAddressID 
+@A_Line1 = @CustomerAddressLine1,
+@A_Line2 = @CustomerAddressLine2,
+@A_Zip = @CustomerZip,
+@A_CityName = @CustomerCityName,
+@A_StateName = @CustomerStateName,
+@A_ID = @AddressID OUTPUT
+
+IF @AddressID IS NULL 
+    BEGIN
+        EXEC CreateNewAddress
+        @AddressLine1 = @CustomerAddressLine1,
+        @Addressline2 = @CustomerAddressLine2,
+        @Zip = @CustomerZip,
+        @CityName = @CustomerCityName, 
+        @StateName = @CustomerStateName
+    END
+
+EXEC GetAddressID 
+@A_Line1 = @CustomerAddressLine1,
+@A_Line2 = @CustomerAddressLine2,
+@A_Zip = @CustomerZip,
+@A_CityName = @CustomerCityName,
+@A_StateName = @CustomerStateName,
+@A_ID = @AddressID OUTPUT
+
+EXEC GetPriorityID
+@P_Name = @Priority,
+@P_ID = @PriorityID OUTPUT
+IF @PriorityID IS NULL 
+    THROW 58000, 'Priority does not exist', 1
+
+-- Get Customer Type ID
+
+BEGIN TRANSACTION
+INSERT INTO tblCUSTOMER (CustomerFname, CustomerLname, CustomerDOB, CustomerEmail, AddressID, PriorityID)
+VALUES (@CustomerFname, @CustomerLname, @CustomerDOB, @CustomerEmail, @AddressID, @PriorityID)
+
+IF @@ERROR <> 0 
+    ROLLBACK
+ELSE 
+    COMMIT
+END 
+GO
+
+CREATE OR ALTER PROCEDURE 
+PopulateCustomers
+@NumberOfCustomers INT
+AS 
+BEGIN
+DECLARE @Run INTEGER = 1
+WHILE @Run <= @NumberOfCustomers
+    BEGIN
+
+    -- Generate random address
+     DECLARE @RandomCityName VARCHAR(100) = (
+        SELECT TOP 1 CityName 
+        FROM tblCITY
+        ORDER BY NEWID()
+    )
+
+    -- get the state associated with that city
+    DECLARE @RandomStateName VARCHAR(100) = (
+        SELECT StateName
+        FROM tblCITY
+            JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID
+        WHERE CityName = @RandomCityName
+    )
+
+    DECLARE @RandomHouseNumber VARCHAR(5) = (
+        SELECT TOP 1 HouseNumber 
+        FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomStreetName VARCHAR(75) = (
+        SELECT TOP 1 StreetName 
+        FROM [PEEPS].[dbo].[tblSTREET_NAME] 
+        ORDER BY NEWID()
+    )
+
+    
+    DECLARE @RandomStreetSuffix VARCHAR(25) = (
+        SELECT TOP 1 StreetSuffix 
+        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] 
+        ORDER BY NEWID()
+    )
+    
+    DECLARE @RandomZip VARCHAR(75) = (
+        SELECT TOP 1 Zip  
+        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] 
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomAddressLine1 VARCHAR(500) = CONCAT(@RandomHouseNumber, ' ', @RandomStreetName, ' ', @RandomStreetSuffix)
+
+    -- Generate customer info 
+    DECLARE @RandomFirstName VARCHAR(50) = (
+        SELECT TOP 1 FirstName 
+        FROM [PEEPS].[dbo].[tblFIRST_NAME]
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomLastName VARCHAR(50) = (
+        SELECT TOP 1 LastName 
+        FROM [PEEPS].[dbo].[tblLAST_NAME]
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomEmail VARCHAR(50) = CONCAT(@RandomFirstName, @RandomLastName, '@gmail.com')
+
+    DECLARE @RandomDateOfBirth DATE = DATEADD(DAY, -(ABS(CHECKSUM(NEWID()) % 36500 )), getdate())
+
+
+    DECLARE @RandomPriority VARCHAR(50) = (
+        SELECT TOP 1 PriorityName 
+        FROM tblPRIORITY
+        ORDER BY NEWID()
+    )
+
+    EXEC CreateNewCustomer
+    @CustomerFname = @RandomFirstName,
+    @CustomerLname = @RandomLastName,
+    @CustomerDOB = @RandomDateOfBirth,
+    @CustomerAddressLine1 = @RandomAddressLine1,
+    @CustomerAddressLine2 = 'Random address line 2',
+    @CustomerZip = @RandomZip,
+    @CustomerCityName = @RandomCityName,
+    @CustomerStateName = @RandomStateName,
+    @CustomerEmail = @RandomEmail,
+    @Priority = @RandomPriority,
+    @CustomerType = 'Veteran'
+
+    SET @Run = @Run + 1
+
+    END
+END
+GO
+
+SELECT * FROM tblCUSTOMER
+SELECT * FROM tblADDRESS
+
+DELETE FROM tblCUSTOMER
+DELETE FROM tblADDRESS
+
+EXEC PopulateCustomers
+@NumberOfCustomers = 1
 GO
 
 -- Business Rules 
