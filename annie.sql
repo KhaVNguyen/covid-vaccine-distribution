@@ -254,7 +254,6 @@ BEGIN
     VALUES('UPS', @CityID),('USPS', @CityID),('DHL', @CityID),('FedEx', @CityID)
     SET @I = @I - 1
 END
-
 IF EXISTS (SELECT TOP 1 * FROM Temp)
      DROP TABLE Temp*/
 
@@ -451,7 +450,7 @@ DECLARE @Shipment_TrackingNum VARCHAR(12), @Shipment_Date DATETIME, @Shipment_Ty
 DECLARE @ShipmentTypeCount INT = (SELECT COUNT(*) FROM tblSHIPMENT_TYPE)
 DECLARE @CarrierCount INT = (SELECT COUNT(*) FROM tblCARRIER)
 DECLARE @ShipmentType_ID INT, @Carrier_ID INT
-DECLARE @RandShipDays INT
+DECLARE @RandShipDays INT, @Number INT
 WHILE @NumsShipment > 0
     BEGIN
             SET @RandShipDays = (SELECT RAND() * 100)
@@ -464,8 +463,16 @@ WHILE @NumsShipment > 0
             SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
             SET @Shipment_TypeName = (SELECT ShipmentTypeName FROM tblSHIPMENT_TYPE WHERE ShipmentTypeID = @ShipmentType_ID)
             -- Get random carrierID
-            SET @Carrier_ID = /*(SELECT RAND() * @CarrierCount + 1) + */(SELECT TOP 1 CarrierID FROM tblCARRIER ORDER BY CarrierID ASC)
-            SET @Shipment_CarrierName = (SELECT CarrierName FROM tblCARRIER WHERE CarrierID = @Carrier_ID)
+            SET @Number = (SELECT RAND() * 100) 
+            SET @Shipment_CarrierName= (CASE
+                                        WHEN @Number < 20
+                                        THEN 'UPS'
+                                        WHEN @Number BETWEEN 20 AND 40
+                                        THEN 'USPS'
+                                        WHEN @Number BETWEEN 40 AND 70
+                                        THEN 'DHL'
+                                        ELSE 'FedEx'
+                                        END)
 
             EXEC Ins_Shipment
             @InsSP_TrackingNum = @Shipment_TrackingNum,
