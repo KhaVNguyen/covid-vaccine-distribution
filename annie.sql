@@ -78,13 +78,15 @@ SET @ST_ID = (
 GO 
 
 -- GET CarrierID
-CREATE PROCEDURE GetCarrierID
+ALTER PROCEDURE GetCarrierID
     @CR_Name    VARCHAR(50),
     @C_CityName VARCHAR(50),
     @CR_ID      INT OUTPUT
 AS
-IF @CR_Name IS NULL OR @C_CityName IS NULL
-    THROW 50202, 'Carrier Name or City Name is null', 1; 
+IF @CR_Name IS NULL
+    THROW 50202, 'Carrier Name is null', 1; 
+IF @C_CityName IS NULL
+    THROW 50215, 'City Name is null', 1; 
 DECLARE @CityID INT
 
 -- Combined from Kha
@@ -378,7 +380,7 @@ EXEC GenerateTrackingNumber @Output = @TrackingNum OUTPUT
 PRINT (@TrackingNum)
 GO
 
-CREATE PROCEDURE PopulateShipment
+CREATE OR ALTER PROCEDURE PopulateShipment
 @NumsShipment INT
 AS
 DECLARE @Run INT = 1
@@ -391,7 +393,7 @@ WHILE @RUN <= @NumsShipment
             -- Generate random tracking number
             EXEC GenerateTrackingNumber
             @Output = @Shipment_TrackingNum OUTPUT 
-            -- Generate rnadom date
+            -- Generate random date
             SET @Shipment_Date = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 31), '2020-01-01')
             -- Get random shipmentTypeID 
             SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
@@ -410,9 +412,13 @@ WHILE @RUN <= @NumsShipment
         SET @RUN = @RUN + 1
     END
 GO
+
 -- Test 
 EXEC PopulateShipment
-@NumsShipment = 10000
+@NumsShipment = 10
+
+SELECT * FROM tblCARRIER
+SELECT * FROM tblSHIPMENT
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
