@@ -16,6 +16,18 @@ CREATE TABLE tblCARRIER     --with FK
 );
 GO
 
+ALTER TABLE tblCARRIER
+DROP CONSTRAINT FK_CityID
+GO
+
+ALTER TABLE tblCARRIER
+DROP COLUMN CityID
+GO
+
+select * from tblCARRIER
+
+delete from tblCARRIER where CarrierID > 2411728
+
 CREATE TABLE tblSHIPMENT     --with FK
 (
     ShipmentID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -64,7 +76,7 @@ GO
 -------------------------- Get ID Sproc --------------------------------------
 
 -- GET ShipmentTypeID
-CREATE PROCEDURE GetShipmentTypeID
+ALTER PROCEDURE GetShipmentTypeID
     @ST_Name    VARCHAR(50),
     @ST_ID      INT OUTPUT 
 AS 
@@ -80,50 +92,38 @@ GO
 -- GET CarrierID
 ALTER PROCEDURE GetCarrierID
     @CR_Name    VARCHAR(50),
-    @C_CityName VARCHAR(50),
     @CR_ID      INT OUTPUT
 AS
 IF @CR_Name IS NULL
     THROW 50202, 'Carrier Name is null', 1; 
-IF @C_CityName IS NULL
-    THROW 50215, 'City Name is null', 1; 
-DECLARE @CityID INT
-
--- Combined from Kha
-EXEC GetCityID
-@C_Name = @C_CityName,
-@C_ID = @CityID
 
 SET @CR_ID = (
     SELECT CarrierID
     FROM tblCARRIER
     WHERE CarrierName = @CR_Name
-    AND CityID = @CityID
 )
 GO
 
 -- GET ShipmentID (with FK ShipmentType and FK Carrier)
-CREATE PROCEDURE GetShipmentID
+ALTER PROCEDURE GetShipmentID
     @SP_TrackingNum         VARCHAR(50),
     @SP_Date                DATETIME,
     @SP_ShipmentTypeName    VARCHAR(50),
     @SP_CarrierName         VARCHAR(50),
-    @SP_CityName            VARCHAR(50),
     @SP_ID                  INT OUTPUT
 AS
 IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR 
-    @SP_CarrierName IS NULL OR @SP_CityName IS NULL 
+    @SP_CarrierName IS NULL
     THROW 50203, 'None of parameter should not be null', 1; 
 DECLARE @ShipmentTypeID INT, @CarrierID INT
 
 EXEC GetShipmentTypeID
 @ST_Name = @SP_ShipmentTypeName,
-@ST_ID = @ShipmentTypeID 
+@ST_ID = @ShipmentTypeID OUTPUT
 
 EXEC GetCarrierID
 @CR_Name = @SP_CarrierName,
-@C_CityName = @SP_CityName,
-@CR_ID = @CarrierID
+@CR_ID = @CarrierID OUTPUT
 
 SET @SP_ID = (
     SELECT ShipmentID 
@@ -136,7 +136,7 @@ SET @SP_ID = (
 GO
 
 -- GET EmployeeTypeID
-CREATE PROCEDURE GetEmployeeTypeID
+ALTER PROCEDURE GetEmployeeTypeID
     @ET_Name     VARCHAR(50),
     @ET_ID       INT OUTPUT 
 AS 
@@ -150,7 +150,7 @@ SET @ET_ID = (
 GO
 
 -- GET EmployeeID
-CREATE PROCEDURE GetEmployeeID
+ALTER PROCEDURE GetEmployeeID
     @E_FName            VARCHAR(50),
     @E_LName            VARCHAR(50),
     @E_DOB              DATE,
@@ -177,7 +177,7 @@ SET @E_ID = (
 GO
 
 -- GET OrderID (with FK EmployeeID and FK Customer)
-CREATE PROCEDURE GetOrderID
+ALTER PROCEDURE GetOrderID
     @OR_Date            DATETIME,
     @OR_EmpFName        VARCHAR(50),
     @OR_EmpLName        VARCHAR(50),
@@ -243,7 +243,7 @@ INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc)
 VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
 
 -- Carrier DATA
-SELECT *, ROW_NUMBER() OVER(ORDER BY CityID) AS I INTO Temp FROM tblCITY
+/*SELECT *, ROW_NUMBER() OVER(ORDER BY CityID) AS I INTO Temp FROM tblCITY
 DECLARE @I INT = (SELECT COUNT(*) FROM tblCITY)
 WHILE @I > 0
 BEGIN
@@ -256,9 +256,9 @@ BEGIN
 END
 
 IF EXISTS (SELECT TOP 1 * FROM Temp)
-     DROP TABLE Temp
+     DROP TABLE Temp*/
 
- SELECT * FROM tblCARRIER
+SELECT * FROM tblCARRIER
 
 
 -- Shipment Type Data 
@@ -273,8 +273,7 @@ ALTER PROCEDURE Ins_Shipment
     @InsSP_TrackingNum         VARCHAR(50),
     @InsSP_Date                DATETIME,
     @InsSP_ShipmentTypeName    VARCHAR(50),
-    @InsSP_CarrierName         VARCHAR(50),
-    @InsSP_CityName            VARCHAR(50)
+    @InsSP_CarrierName         VARCHAR(50)
 AS 
 BEGIN
 DECLARE @ShipmentTypeID INT, @CarrierID INT
@@ -283,13 +282,20 @@ EXEC GetShipmentTypeID
 @ST_Name = @InsSP_ShipmentTypeName,
 @ST_ID = @ShipmentTypeID OUTPUT
 
+    IF @ShipmentTypeID IS NULL
+        BEGIN
+        THROW 50207, '@ShipmentTypeID is not found', 1;
+    END
+
 EXEC GetCarrierID
 @CR_Name = @InsSP_CarrierName,
-@C_CityName = @InsSP_CityName,
 @CR_ID = @CarrierID OUTPUT
+    
+    IF @CarrierID IS NULL 
+        BEGIN
+        THROW 50300, '@CarrierID is not found', 1;
+        END
 
-    IF @ShipmentTypeID IS NULL OR @CarrierID IS NULL 
-        THROW 50207, '@ShipmentTypeID or @CarrierID not found', 1;
     BEGIN TRANSACTION T1
         INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
         VALUES (@InsSP_TrackingNum, @InsSP_Date, @ShipmentTypeID, @CarrierID)
@@ -383,41 +389,42 @@ GO
 CREATE OR ALTER PROCEDURE PopulateShipment
 @NumsShipment INT
 AS
-DECLARE @Run INT = 1
-DECLARE @Shipment_TrackingNum VARCHAR(12), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50), @Shipment_CityName VARCHAR(50)
+DECLARE @Shipment_TrackingNum VARCHAR(12), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50)
 DECLARE @ShipmentTypeCount INT = (SELECT COUNT(*) FROM tblSHIPMENT_TYPE)
 DECLARE @CarrierCount INT = (SELECT COUNT(*) FROM tblCARRIER)
 DECLARE @ShipmentType_ID INT, @Carrier_ID INT
-WHILE @RUN <= @NumsShipment
+DECLARE @RandShipDays INT
+WHILE @NumsShipment > 0
     BEGIN
+            SET @RandShipDays = (SELECT RAND() * 100)
             -- Generate random tracking number
             EXEC GenerateTrackingNumber
             @Output = @Shipment_TrackingNum OUTPUT 
-            -- Generate random date
-            SET @Shipment_Date = DATEADD(DAY, ABS(CHECKSUM(NEWID()) % 31), '2020-01-01')
+            -- Generate random date 
+            SET @Shipment_Date = DATEADD(DAY, @RandShipDays, GETDATE())
             -- Get random shipmentTypeID 
             SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
             SET @Shipment_TypeName = (SELECT ShipmentTypeName FROM tblSHIPMENT_TYPE WHERE ShipmentTypeID = @ShipmentType_ID)
             -- Get random carrierID
-            SET @Carrier_ID = (SELECT RAND() * @CarrierCount + 1)
+            SET @Carrier_ID = /*(SELECT RAND() * @CarrierCount + 1) + */(SELECT TOP 1 CarrierID FROM tblCARRIER ORDER BY CarrierID ASC)
             SET @Shipment_CarrierName = (SELECT CarrierName FROM tblCARRIER WHERE CarrierID = @Carrier_ID)
-            SET @Shipment_CityName = (SELECT C.CityName FROM tblCITY C JOIN tblCARRIER CR
-                                                        ON C.CityID = CR.CityID WHERE CarrierID = @Carrier_ID)
+
             EXEC Ins_Shipment
             @InsSP_TrackingNum = @Shipment_TrackingNum,
             @InsSP_Date = @Shipment_Date,
             @InsSP_ShipmentTypeName = @Shipment_TypeName,
-            @InsSP_CarrierName = @Shipment_CarrierName,
-            @InsSP_CityName = @Shipment_CityName
-        SET @RUN = @RUN + 1
+            @InsSP_CarrierName = @Shipment_CarrierName
+
+        SET @NumsShipment = @NumsShipment - 1
     END
 GO
 
 -- Test 
 EXEC PopulateShipment
-@NumsShipment = 10
+@NumsShipment = 100
 
 SELECT * FROM tblCARRIER
+
 SELECT * FROM tblSHIPMENT
 
 -------------------------- Business Rules  --------------------------------------
