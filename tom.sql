@@ -1,6 +1,8 @@
 USE INFO430_Proj_10
 GO
 
+SELECT * FROM tblPRODUCT
+
 ---------------------------------------------------------------------------------------------------
 -- Create Tables
 ---------------------------------------------------------------------------------------------------
@@ -209,9 +211,12 @@ AS
 			-- This line of code was taken and modified from https://www.sqlteam.com/forums/topic.asp?TOPIC_ID=21132
 			SELECT CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
 				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
+				'-' +
+				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
+				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
 				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
 				'-' +
-				CAST(1000 * RAND() AS CHAR)
+				CAST(FLOOR(10000 * RAND()) AS CHAR)
 		)
 
 		DECLARE @RandProductDesc VARCHAR(1000) = (
@@ -221,41 +226,50 @@ AS
 		DECLARE @RandSupplierRowNumber INT = FLOOR(RAND() * (SELECT COUNT(*) FROM tblSUPPLIER) + 1)
 		DECLARE @RandSupplierName VARCHAR(50) = (SELECT SupplierName FROM Temp_tblSUPPLIER WHERE RowNumber = @RandSupplierRowNumber)
 
-		EXEC Ins_Product
-		@ProductName = @RandProductName,
-		@ProductDesc = @RandProductDesc,
-		@SupplierName = @RandSupplierName
-
 		DECLARE @RandMinTemp INT = RAND() * -100
-		EXEC Ins_ProductDetail
-		@ProductName = @RandProductName,
-		@DetailName = 'Minimum Temperature',
-		@Value = @RandMinTemp
-
 		DECLARE @RandMaxTemp INT = @RandMinTemp + RAND() * 10
-		EXEC Ins_ProductDetail
-		@ProductName = @RandProductName,
-		@DetailName = 'Maximum Temperature',
-		@Value = @RandMaxTemp
-
 		DECLARE @RandRecTemp INT = @RandMaxTemp - RAND() * 5
-		EXEC Ins_ProductDetail
-		@ProductName = @RandProductName,
-		@DetailName = 'Recommended Temperature',
-		@Value = @RandRecTemp
-
 		DECLARE @RandWeight INT = RAND() * 10
-		EXEC Ins_ProductDetail
-		@ProductName = @RandProductName,
-		@DetailName = 'Weight',
-		@Value = @RandWeight
+
+		BEGIN TRAN T1
+			EXEC Ins_Product
+			@ProductName = @RandProductName,
+			@ProductDesc = @RandProductDesc,
+			@SupplierName = @RandSupplierName
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Minimum Temperature',
+			@Value = @RandMinTemp
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Maximum Temperature',
+			@Value = @RandMaxTemp
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Recommended Temperature',
+			@Value = @RandRecTemp
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Weight',
+			@Value = @RandWeight
+
+			IF @@ERROR <> 0
+			BEGIN
+				ROLLBACK TRAN T1;
+				THROW 54000, 'Something went wrong', 1;
+			END
+		COMMIT TRAN T1
 
 		SET @Run = @Run + 1
 	END
 GO
 
-IF (SELECT COUNT(*) FROM tblPRODUCT) <> 100
-	EXEC PopulateProduct @N = 100
+IF (SELECT COUNT(*) FROM tblPRODUCT) <> 50
+	EXEC PopulateProduct @N = 50
 
 IF EXISTS (SELECT TOP 1 * FROM Temp_tblSUPPLIER)
 	DROP TABLE Temp_tblSUPPLIER
@@ -278,4 +292,5 @@ IF EXISTS (SELECT TOP 1 * FROM Temp_tblSUPPLIER)
 SELECT * FROM tblDETAIL
 SELECT * FROM tblSUPPLIER
 DELETE FROM tblSUPPLIER
-DBCC CHECKIDENT ('tblDETAIL', RESEED, 0)
+DBCC CHECKIDENT ('tblPRODUCT_DETAIL', RESEED, 0)
+TRUNCATE TABLE tblPRODUCT
