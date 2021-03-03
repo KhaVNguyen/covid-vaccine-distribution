@@ -1,5 +1,8 @@
+USE INFO430_Proj_10
+GO
+
 ---------------------------------------------------------------------------------------------------
--- Tables
+-- Create Tables
 ---------------------------------------------------------------------------------------------------
 CREATE TABLE tblCUSTOMER_TYPE (
 	CustomerTypeID INT IDENTITY(1,1) PRIMARY KEY,
@@ -11,8 +14,7 @@ GO
 CREATE TABLE tblSUPPLIER (
 	SupplierID INT IDENTITY(1,1) PRIMARY KEY,
 	SupplierName VARCHAR(50),
-	SupplierDesc VARCHAR(1000),
-	CityID INT FOREIGN KEY REFERENCES tblCITY(CityID)
+	SupplierDesc VARCHAR(1000)
 )
 GO
 
@@ -48,108 +50,98 @@ CREATE TABLE tblPRODUCT_DETAIL (
 GO
 
 ---------------------------------------------------------------------------------------------------
--- GetID Procedure
+-- GetID Procedures
 ---------------------------------------------------------------------------------------------------
 CREATE OR ALTER PROC GetCustomerTypeID
-@_Name VARCHAR(50),
+@_CustomerTypeName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50011, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT CustomerTypeID
-		FROM tblCUSTOMER_TYPE
-		WHERE CustomerTypeName = @_Name
+		SELECT CustomerTypeID FROM tblCUSTOMER_TYPE WHERE CustomerTypeName = @_CustomerTypeName
 	)
 GO
 
 CREATE OR ALTER PROC GetSupplierID
-@_Name VARCHAR(50),
+@_SupplierName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50012, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT SupplierID
-		FROM tblSUPPLIER
-		WHERE SupplierName = @_Name
+		SELECT SupplierID FROM tblSUPPLIER WHERE SupplierName = @_SupplierName
 	)
 GO
 
 CREATE OR ALTER PROC GetProductID
-@_Name VARCHAR(50),
+@_ProductName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50013, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT ProductID
-		FROM tblPRODUCT
-		WHERE ProductName = @_Name
+		SELECT ProductID FROM tblPRODUCT WHERE ProductName = @_ProductName
 	)
 GO
 
 CREATE OR ALTER PROC GetDetailID
-@_Name VARCHAR(50),
+@_DetailName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50014, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT DetailID
-		FROM tblDETAIL
-		WHERE DetailName = @_Name
+		SELECT DetailID FROM tblDETAIL WHERE DetailName = @_DetailName
 	)
 GO
 
 ---------------------------------------------------------------------------------------------------
--- Insert Proc
+-- Stored Procedures
 ---------------------------------------------------------------------------------------------------
-CREATE OR ALTER PROC AddSupplier
+CREATE OR ALTER PROC Ins_Supplier
 @SupplierName VARCHAR(50),
 @SupplierDesc VARCHAR(1000),
 @CityName INT
 AS
 	DECLARE @CityID INT
 	EXEC GetCityID
-	@C_Name = @CityName OUTPUT
+	@C_Name = @CityName,
+	@C_ID = @CityID OUTPUT
 
 	IF @CityID IS NULL
-		THROW 50015, 'City not found', 1;
+		THROW 51000, 'City not found', 1;
 
 	BEGIN TRAN T1
 		INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc, SupplierID)
 		VALUES (@SupplierName, @SupplierDesc, @CityID)
 
-        IF @@ERROR <> 0
-	ROLLBACK TRAN T1
-        ELSE
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1
+			THROW 51001, 'Something went wrong', 1;
+		END
 	COMMIT TRAN T1
 GO
 
-CREATE OR ALTER PROC AddProduct
+CREATE OR ALTER PROC Ins_Product
 @ProductName VARCHAR(50),
 @ProductDesc VARCHAR(1000),
 @SupplierName VARCHAR(50)
 AS
 	DECLARE @SupplierID INT
 	EXEC GetSupplierID
-	@_Name = @SupplierName OUTPUT
+	@_SupplierName = @SupplierName,
+	@_Out = @SupplierID OUTPUT
 
 	IF @SupplierID IS NULL
-		THROW 50016, 'SupplierName not found', 1;
+		THROW 52000, 'Supplier not found', 1;
 
 	BEGIN TRAN T1
 		INSERT INTO tblPRODUCT (ProductName, ProductDesc, SupplierID)
 		VALUES (@ProductName, @ProductDesc, @SupplierID)
 
-        IF @@ERROR <> 0
-	ROLLBACK TRAN T1
-        ELSE
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1
+			THROW 52001, 'Something went wrong', 1;
+		END
 	COMMIT TRAN T1
 GO
 
-CREATE OR ALTER PROC AddProductDetail
+CREATE OR ALTER PROC Ins_ProductDetail
 @ProductName VARCHAR(50),
 @DetailName VARCHAR(50),
 @DetailDesc VARCHAR(1000),
@@ -157,34 +149,39 @@ CREATE OR ALTER PROC AddProductDetail
 AS
 	DECLARE @ProductID INT
 	EXEC GetProductID
-	@_Name = @ProductName OUTPUT
+	@_ProductName = @ProductName,
+	@_Out = @ProductID OUTPUT
 
 	IF @ProductID IS NULL
-		THROW 50017, 'ProductName not found', 1;
+		THROW 53000, 'Product not found', 1;
 
 	BEGIN TRAN T1
 		INSERT INTO tblDETAIL (DetailName, DetailDesc)
 		VALUES (@DetailName, @DetailDesc)
 
-		DECLARE @DetailID = (SCOPE_IDENTITY())
+		DECLARE @DetailID INT = (SCOPE_IDENTITY())
 
 		INSERT INTO tblPRODUCT_DETAIL (ProductID, DetailID, [Value])
 		VALUES (@ProductID, @DetailID, @Value)
 
-        IF @@ERROR <> 0 AND @@TRANCOUNT <> 1
-	ROLLBACK TRAN T1
-        ELSE
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1
+			THROW 53001, 'Something went wrong', 1;
+		END
 	COMMIT TRAN T1
 GO
 
 ---------------------------------------------------------------------------------------------------
--- Populate product
+-- Populate tblPRODUCT, tblPRODUCT_DETAIL, tblDETAIL
 ---------------------------------------------------------------------------------------------------
+SELECT *, ROW_NUMBER() OVER(ORDER BY CityID) AS I INTO Temp FROM tblCITY
+
 CREATE OR ALTER PROC PopulateProduct
-@NProduct INT
+@N INT
 AS
 	DECLARE @Run INT = 1
-	WHILE @Run <= @NProduct
+	WHILE @Run <= @N
 	BEGIN
 		DECLARE @RandProductName VARCHAR(50) = (
 			-- This line of code was taken from https://www.sqlteam.com/forums/topic.asp?TOPIC_ID=21132
@@ -196,8 +193,7 @@ AS
 		)
 
 		DECLARE @RandProductDesc VARCHAR(1000) = (
-			'This is a random product description given given a number of ' +
-			CAST(FLOOR(10000 * RAND()) AS VARCHAR(10))
+			'This is a random product description given a number of ' + CAST(RAND() AS VARCHAR(10))
 		)
 
 		DECLARE @RandSupplierID INT = FLOOR(RAND() * (SELECT COUNT(*) FROM tblSUPPLIER) + 1)
@@ -211,3 +207,35 @@ AS
 		SET @Run = @Run + 1
 	END
 GO
+
+---------------------------------------------------------------------------------------------------
+-- Populate Look-Up Tables
+---------------------------------------------------------------------------------------------------
+-- The data below is taken from https://en.wikipedia.org/wiki/COVID-19_vaccine
+IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
+	INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc) VALUES
+	('Pfizer–BioNTech', 'United States, Germany'),
+	('Gamaleya Research Institute', 'Russia'),
+	('Oxford–AstraZeneca', 'United Kingdom'),
+	('Sinopharm', 'China'),
+	('Sinovac', 'China'),
+	('Moderna', 'United States'),
+	('Johnson & Johnson', 'United States, Netherlands')
+
+SELECT * FROM tblSUPPLIER
+DELETE FROM tblSUPPLIER
+DBCC CHECKIDENT ('tblSUPPLIER', RESEED, 0)
+
+
+
+---------------------------------------------------------------------------------------------------
+-- Check constraints
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+-- Computed columns
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+-- Views
+---------------------------------------------------------------------------------------------------

@@ -1,11 +1,9 @@
-
 USE INFO430_Proj_10
+GO
 
--- SQL code goes here
 ---------------------------------------------------------------------------------------------------
 -- Shipping process Tables
 ---------------------------------------------------------------------------------------------------
-
 CREATE TABLE tblSTATE
 (
     StateID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -77,6 +75,7 @@ CREATE TABLE tblEMPLOYEE     --with FK
     EmployeeTypeID INTEGER FOREIGN KEY REFERENCES tblEMPLOYEE_TYPE(EmployeeTypeID)
 );
 GO
+
 ---------------------------------------------------------------------------------------------------
 -- Customer related Tables
 ---------------------------------------------------------------------------------------------------
@@ -107,6 +106,7 @@ CREATE TABLE tblCUSTOMER
     CustomerTypeID INTEGER FOREIGN KEY REFERENCES tblCUSTOMER_TYPE(CustomerTypeID)
 );
 GO
+
 ---------------------------------------------------------------------------------------------------
 -- Order process Tables
 ---------------------------------------------------------------------------------------------------
@@ -122,8 +122,7 @@ GO
 CREATE TABLE tblSUPPLIER (
 	SupplierID INT IDENTITY(1,1) PRIMARY KEY,
 	SupplierName VARCHAR(50),
-	SupplierDesc VARCHAR(1000),
-	CityID INT FOREIGN KEY REFERENCES tblCITY(CityID)
+	SupplierDesc VARCHAR(1000)
 )
 GO
 
@@ -167,58 +166,42 @@ CREATE TABLE tblPRODUCT_DETAIL (
 GO
 
 ---------------------------------------------------------------------------------------------------
--- GetID Stored Procedure 
+-- GetID Stored Procedure
 ---------------------------------------------------------------------------------------------------
 -- Tom
 CREATE OR ALTER PROC GetCustomerTypeID
-@_Name VARCHAR(50),
+@_CustomerTypeName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50011, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT CustomerTypeID
-		FROM tblCUSTOMER_TYPE
-		WHERE CustomerTypeName = @_Name
+		SELECT CustomerTypeID FROM tblCUSTOMER_TYPE WHERE CustomerTypeName = @_CustomerTypeName
 	)
 GO
 
 CREATE OR ALTER PROC GetSupplierID
-@_Name VARCHAR(50),
+@_SupplierName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50012, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT SupplierID
-		FROM tblSUPPLIER
-		WHERE SupplierName = @_Name
+		SELECT SupplierID FROM tblSUPPLIER WHERE SupplierName = @_SupplierName
 	)
 GO
 
 CREATE OR ALTER PROC GetProductID
-@_Name VARCHAR(50),
+@_ProductName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50013, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT ProductID
-		FROM tblPRODUCT
-		WHERE ProductName = @_Name
+		SELECT ProductID FROM tblPRODUCT WHERE ProductName = @_ProductName
 	)
 GO
 
 CREATE OR ALTER PROC GetDetailID
-@_Name VARCHAR(50),
+@_DetailName VARCHAR(50),
 @_Out INT OUTPUT
 AS
-	IF @_Name IS NULL
-		THROW 50014, '_Name can not be null', 1;
 	SET @_Out = (
-		SELECT DetailID
-		FROM tblDETAIL
-		WHERE DetailName = @_Name
+		SELECT DetailID FROM tblDETAIL WHERE DetailName = @_DetailName
 	)
 GO
 
@@ -247,28 +230,28 @@ CREATE OR ALTER PROCEDURE GetAddressID
 AS
 DECLARE @CityID INT, @StateID INT
 
-EXEC GetCityID 
+EXEC GetCityID
 @C_Name = @A_CityName,
 @C_ID = @CityID
 
-EXEC GetStateID 
+EXEC GetStateID
 @S_Name = @A_StateName,
 @S_ID = @StateID
 
 SET @A_ID = (
-    SELECT AddressID 
-    FROM tblADDRESS 
+    SELECT AddressID
+    FROM tblADDRESS
     WHERE AddressLine1 = @A_Line1
         AND AddressLine2 = @A_Line2
         AND Zip = @A_Zip
-        AND CityID = @CityID 
-        AND StateID = @StateID 
+        AND CityID = @CityID
+        AND StateID = @StateID
 )
 GO
 
-CREATE OR ALTER PROCEDURE GetPriorityID 
+CREATE OR ALTER PROCEDURE GetPriorityID
 @P_Name VARCHAR(50),
-@P_ID INT OUTPUT 
+@P_ID INT OUTPUT
 AS
 SET @P_ID = (SELECT PriorityID FROM tblPRIORITY WHERE PriorityName = @P_Name)
 GO
@@ -299,23 +282,23 @@ EXEC GetAddressID
 @A_StateName = @C_AStateName,
 @A_ID = @AddressID
 
-IF @AddressID IS NULL 
-    THROW 50300, 'Could not find that address', 1; 
+IF @AddressID IS NULL
+    THROW 50300, 'Could not find that address', 1;
 
--- combined from Kha 
-EXEC GetPriorityID 
+-- combined from Kha
+EXEC GetPriorityID
 @P_Name = @C_Pname,
 @P_ID = @PriorityID
 
-IF @PriorityID IS NULL 
-    THROW 50301, 'Could not find that priority type', 1; 
+IF @PriorityID IS NULL
+    THROW 50301, 'Could not find that priority type', 1;
 
 EXEC GetCustomerTypeID
 @_Name = @C_CustTypeName,
 @_Out = @CustomerTypeID
 
-IF @CustomerTypeID IS NULL 
-    THROW 50301, 'Could not find that customer type', 1; 
+IF @CustomerTypeID IS NULL
+    THROW 50301, 'Could not find that customer type', 1;
 
 SET @C_ID = (
     SELECT CustomerID
@@ -338,16 +321,16 @@ GO
 -- GET ShipmentTypeID
 CREATE OR ALTER PROCEDURE GetShipmentTypeID
     @ST_Name    VARCHAR(50),
-    @ST_ID      INT OUTPUT 
-AS 
+    @ST_ID      INT OUTPUT
+AS
 IF @ST_Name IS NULL
-    THROW 50201, 'ShipmentTypeName is null', 1; 
+    THROW 50201, 'ShipmentTypeName is null', 1;
 SET @ST_ID = (
     SELECT ShipmentTypeID
-    FROM tblSHIPMENT_TYPE 
+    FROM tblSHIPMENT_TYPE
     WHERE ShipmentTypeName = @ST_Name
 )
-GO 
+GO
 
 -- GET CarrierID
 CREATE OR ALTER PROCEDURE GetCarrierID
@@ -356,7 +339,7 @@ CREATE OR ALTER PROCEDURE GetCarrierID
     @CR_ID      INT OUTPUT
 AS
 IF @CR_Name IS NULL OR @C_CityName IS NULL
-    THROW 50202, 'Carrier Name or City Name is null', 1; 
+    THROW 50202, 'Carrier Name or City Name is null', 1;
 DECLARE @CityID INT
 
 -- Combined from Kha
@@ -381,14 +364,14 @@ CREATE OR ALTER PROCEDURE GetShipmentID
     @SP_CityName            VARCHAR(50),
     @SP_ID                  INT OUTPUT
 AS
-IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR 
-    @SP_CarrierName IS NULL OR @SP_CityName IS NULL 
-    THROW 50203, 'None of parameter should not be null', 1; 
+IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR
+    @SP_CarrierName IS NULL OR @SP_CityName IS NULL
+    THROW 50203, 'None of parameter should not be null', 1;
 DECLARE @ShipmentTypeID INT, @CarrierID INT
 
 EXEC GetShipmentTypeID
 @ST_Name = @SP_ShipmentTypeName,
-@ST_ID = @ShipmentTypeID 
+@ST_ID = @ShipmentTypeID
 
 EXEC GetCarrierID
 @CR_Name = @SP_CarrierName,
@@ -396,9 +379,9 @@ EXEC GetCarrierID
 @CR_ID = @CarrierID
 
 SET @SP_ID = (
-    SELECT ShipmentID 
+    SELECT ShipmentID
     FROM tblSHIPMENT
-    WHERE TrackingNumber = @SP_TrackingNum 
+    WHERE TrackingNumber = @SP_TrackingNum
         AND ShippingDate = @SP_Date
         AND ShipmentTypeID = @ShipmentTypeID
         AND CarrierID = @CarrierID
@@ -409,13 +392,13 @@ GO
 -- GET EmployeeTypeID
 CREATE OR ALTER PROCEDURE GetEmployeeTypeID
     @ET_Name     VARCHAR(50),
-    @ET_ID       INT OUTPUT 
-AS 
+    @ET_ID       INT OUTPUT
+AS
 IF @ET_Name IS NULL
-    THROW 50204, 'EmployeeTypeName is null', 1; 
+    THROW 50204, 'EmployeeTypeName is null', 1;
 SET @ET_ID = (
     SELECT EmployeeTypeID
-    FROM tblEMPLOYEE_TYPE 
+    FROM tblEMPLOYEE_TYPE
     WHERE EmployeeTypeName = @ET_Name
 )
 GO
@@ -427,10 +410,10 @@ CREATE OR ALTER PROCEDURE GetEmployeeID
     @E_DOB              DATE,
     @E_EmployeeTypeName VARCHAR(50),
     @E_ID        INT OUTPUT
-AS 
-IF @E_FName IS NULL OR @E_LName IS NULL OR @E_DOB IS NULL OR 
+AS
+IF @E_FName IS NULL OR @E_LName IS NULL OR @E_DOB IS NULL OR
     @E_EmployeeTypeName IS NULL
-    THROW 50205, 'None of parameter should not be null', 1; 
+    THROW 50205, 'None of parameter should not be null', 1;
 DECLARE @EmployeeTypeID INT
 
 EXEC GetEmployeeTypeID
@@ -460,14 +443,14 @@ CREATE OR ALTER PROCEDURE GetOrderID
     @OR_CustEmail       VARCHAR(50),
     @OR_ID              INT OUTPUT
 AS
-IF  @OR_Date IS NULL OR 
-    @OR_EmpFName IS NULL OR 
-    @OR_EmpLName IS NULL OR 
-    @OR_EmpDOB IS NULL OR 
-    @OR_EmpTypeName IS NULL OR 
-    @OR_CustFname IS NULL OR 
-    @OR_CustLname IS NULL OR 
-    @OR_CustDOB IS NULL OR 
+IF  @OR_Date IS NULL OR
+    @OR_EmpFName IS NULL OR
+    @OR_EmpLName IS NULL OR
+    @OR_EmpDOB IS NULL OR
+    @OR_EmpTypeName IS NULL OR
+    @OR_CustFname IS NULL OR
+    @OR_CustLname IS NULL OR
+    @OR_CustDOB IS NULL OR
     @OR_CustEmail IS NULL
     THROW 50206, 'None of parameter should not be null', 1;
 
@@ -480,7 +463,7 @@ EXEC GetEmployeeID
 @E_EmployeeTypeName = @OR_EmpTypeName,
 @E_ID = @EmployeeID
 
--- combined from Kha 
+-- combined from Kha
 EXEC GetCustomerID
 @C_Fname = @OR_CustFname,
 @C_Lname = @OR_CustLname,
@@ -497,7 +480,7 @@ SET @OR_ID = (
 )
 GO
 ---------------------------------------------------------------------------------------------------
--- Insert Stored Procedure 
+-- Insert Stored Procedure
 ---------------------------------------------------------------------------------------------------
 
 
@@ -554,4 +537,3 @@ SELECT * FROM tblCUSTOMER
 SELECT * FROM tblSHIPMENT -- not done yet
 SELECT * FROM tblCITY
 SELECT * FROM tblADDRESS
-
