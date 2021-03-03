@@ -333,6 +333,64 @@ DECLARE @EmployeeTypeID INT
     END 
 GO
 
+-- insert Order
+CREATE PROCEDURE Ins_Order
+    @Ins_OrderDate            DATETIME,
+    @Ins_OrderEmpFName        VARCHAR(50),
+    @Ins_OrderEmpLName        VARCHAR(50),
+    @Ins_OrderEmpDOB          DATE,
+    @Ins_OrderEmpTypeName     VARCHAR(50),
+    @Ins_OrderCustFname       VARCHAR(50),
+    @Ins_OrderCustLname       VARCHAR(50),
+    @Ins_OrderCustDOB         DATE,
+    @Ins_OrderCustEmail       VARCHAR(50),
+    @Ins_OrderCustTypeName VARCHAR(50),
+    @Ins_OrderPname VARCHAR(50),
+    @Ins_OrderALine1 VARCHAR(100),
+    @Ins_OrderALine2 VARCHAR(100),
+    @Ins_OrderAZip VARCHAR(5),
+    @Ins_OrderACityName VARCHAR(50),
+    @Ins_OrderAStateName VARCHAR(50)
+AS
+BEGIN
+    DECLARE @Ins_CustomerID INT, @Ins_EmployeeID INT
+        EXEC GetCustomerID
+        @C_Fname = @Ins_OrderCustFname,
+        @C_Lname = @Ins_OrderCustLname,
+        @C_DOB = @Ins_OrderCustDOB,
+        @C_Email = @Ins_OrderCustEmail,
+        @C_CustTypeName = @Ins_OrderCustTypeName,
+        @C_Pname = @Ins_OrderPname,
+        @C_ALine1 = @Ins_OrderALine1,
+        @C_ALine2 = @Ins_OrderALine2,
+        @C_AZip = @Ins_OrderAZip,
+        @C_ACityName = @Ins_OrderACityName,
+        @C_AStateName = @Ins_OrderAStateName,
+        @C_ID = @Ins_CustomerID OUTPUT
+
+        IF @Ins_CustomerID IS NULL
+            THROW 50291, 'CustomerID should not be null', 1;
+
+        EXEC GetEmployeeID
+        @E_FName = @Ins_OrderEmpFName,
+        @E_LName = @Ins_OrderEmpLName,
+        @E_DOB = @Ins_OrderEmpDOB,
+        @E_EmployeeTypeName = @Ins_OrderEmpTypeName,
+        @E_ID = @Ins_EmployeeID OUTPUT
+
+        IF @Ins_EmployeeID IS NULL
+            THROW 50290, 'EmployeeID should not be null', 1;
+
+        BEGIN TRAN T1
+                INSERT INTO tblORDER(OrderDate, CustomerID, EmployeeID)
+                VALUES (@Ins_OrderDate, @Ins_CustomerID, @Ins_EmployeeID)
+                IF @@ERROR <> 0
+            ROLLBACK TRAN T1
+                ELSE
+        COMMIT TRAN T1
+END
+GO
+
 -------------------------- Populate EmployeeData --------------------------------------
 INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
 SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2 
