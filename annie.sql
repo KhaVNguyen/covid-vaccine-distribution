@@ -738,3 +738,5 @@ AS
 	COMMIT TRAN T1
 GO
 */
+
+select * from tbl
