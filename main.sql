@@ -267,8 +267,6 @@ AS
 SET @P_ID = (SELECT PriorityID FROM tblPRIORITY WHERE PriorityName = @P_Name)
 GO
 
-/* needs to hook up with other people's code */
-/* Please add error handling :) */
 CREATE OR ALTER PROCEDURE GetCustomerID
 @C_Fname VARCHAR(50),
 @C_Lname VARCHAR(50),
