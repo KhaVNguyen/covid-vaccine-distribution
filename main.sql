@@ -36,10 +36,9 @@ CREATE TABLE tblCARRIER     --with FK
 (
     CarrierID INTEGER IDENTITY(1,1) PRIMARY KEY,
     CarrierName VARCHAR(50) NOT NULL
-    --CityID INTEGER FOREIGN KEY REFERENCES tblCITY(CityID) -- DO NOT NEED
 );
 GO
-
+SELECT * FROM tblCARRIER
 /*ALTER TABLE tblCARRIER
 DROP CONSTRAINT FK_CityID
 GO
@@ -270,61 +269,19 @@ GO
 
 /* needs to hook up with other people's code */
 /* Please add error handling :) */
-CREATE PROCEDURE GetCustomerID
+CREATE OR ALTER PROCEDURE GetCustomerID
 @C_Fname VARCHAR(50),
 @C_Lname VARCHAR(50),
 @C_DOB DATE,
-@C_Email VARCHAR(50),
-@C_CustTypeName VARCHAR(50),
-@C_Pname VARCHAR(50),
-@C_ALine1 VARCHAR(100),
-@C_ALine2 VARCHAR(100),
-@C_AZip VARCHAR(5),
-@C_ACityName VARCHAR(50),
-@C_AStateName VARCHAR(50),
 @C_ID INT OUTPUT
 AS
-DECLARE @AddressID INT, @PriorityID INT, @CustomerTypeID INT
-
-EXEC GetAddressID
-@A_Line1 = @C_ALine1,
-@A_Line2 = @C_ALine2,
-@A_Zip = @C_AZip,
-@A_CityName = @C_ACityName,
-@A_StateName = @C_AStateName,
-@A_ID = @AddressID
-
-IF @AddressID IS NULL
-    THROW 50300, 'Could not find that address', 1;
-
--- combined from Kha
-EXEC GetPriorityID
-@P_Name = @C_Pname,
-@P_ID = @PriorityID
-
-IF @PriorityID IS NULL
-    THROW 50301, 'Could not find that priority type', 1;
-
-EXEC GetCustomerTypeID
-@_CustomerTypeName = @C_CustTypeName,
-@_Out = @CustomerTypeID
-
-IF @CustomerTypeID IS NULL
-    THROW 50301, 'Could not find that customer type', 1;
-
-SET @C_ID = (
-    SELECT CustomerID
-    FROM tblCUSTOMER
-    WHERE CustomerFname = @C_Fname
-        AND CustomerLname = @C_Lname
-        AND CustomerDOB = @C_DOB
-        AND CustomerEmail = @C_Email
-        AND AddressID = @AddressID
-        AND PriorityID = @PriorityID
-        AND CustomerTypeID = @CustomerTypeID
-)
-
-
+	SET @C_ID = (
+		SELECT CustomerID
+		FROM tblCUSTOMER
+		WHERE CustomerFname = @C_Fname
+			AND CustomerLname = @C_Lname
+			AND CustomerDOB = @C_DOB
+	)
 GO
 
 -- Annie
@@ -390,17 +347,19 @@ SET @SP_ID = (
 GO
 
 -- GET EmployeeTypeID
-CREATE OR ALTER PROCEDURE GetEmployeeTypeID
-    @ET_Name     VARCHAR(50),
-    @ET_ID       INT OUTPUT
-AS
-IF @ET_Name IS NULL
-    THROW 50204, 'EmployeeTypeName is null', 1;
-SET @ET_ID = (
-    SELECT EmployeeTypeID
-    FROM tblEMPLOYEE_TYPE
-    WHERE EmployeeTypeName = @ET_Name
-)
+CREATE OR ALTER PROCEDURE GetEmployeeID
+    @E_FName VARCHAR(50),
+    @E_LName VARCHAR(50),
+    @E_DOB DATE,
+    @E_ID INT OUTPUT
+AS 
+	SET @E_ID = (
+		SELECT EmployeeID
+		FROM tblEMPLOYEE
+		WHERE EmployeeFName = @E_FName
+		AND EmployeeLName = @E_LName
+		AND EmployeeDOB = @E_DOB
+	)
 GO
 
 -- GET EmployeeID
@@ -408,25 +367,14 @@ CREATE OR ALTER PROCEDURE GetEmployeeID
     @E_FName            VARCHAR(50),
     @E_LName            VARCHAR(50),
     @E_DOB              DATE,
-    @E_EmployeeTypeName VARCHAR(50),
     @E_ID        INT OUTPUT
 AS
-IF @E_FName IS NULL OR @E_LName IS NULL OR @E_DOB IS NULL OR
-    @E_EmployeeTypeName IS NULL
-    THROW 50205, 'None of parameter should not be null', 1;
-DECLARE @EmployeeTypeID INT
-
-EXEC GetEmployeeTypeID
-@ET_Name = @E_EmployeeTypeName,
-@ET_ID = @EmployeeTypeID
-
 SET @E_ID = (
     SELECT EmployeeID
     FROM tblEMPLOYEE
     WHERE EmployeeFName = @E_LName
         AND EmployeeLName = @E_LName
         AND EmployeeDOB = @E_DOB
-        AND EmployeeTypeID = @EmployeeTypeID
 )
 GO
 
@@ -436,37 +384,18 @@ CREATE OR ALTER PROCEDURE GetOrderID
     @OR_EmpFName        VARCHAR(50),
     @OR_EmpLName        VARCHAR(50),
     @OR_EmpDOB          DATE,
-    @OR_EmpTypeName     VARCHAR(50),
     @OR_CustFname       VARCHAR(50),
     @OR_CustLname       VARCHAR(50),
     @OR_CustDOB         DATE,
-    @OR_CustEmail       VARCHAR(50),
-    @OR_CustTypeName VARCHAR(50),
-    @OR_Pname VARCHAR(50),
-    @OR_ALine1 VARCHAR(100),
-    @OR_ALine2 VARCHAR(100),
-    @OR_AZip VARCHAR(5),
-    @OR_ACityName VARCHAR(50),
-    @OR_AStateName VARCHAR(50),
     @OR_ID              INT OUTPUT
 AS
-IF  @OR_Date IS NULL OR
-    @OR_EmpFName IS NULL OR
-    @OR_EmpLName IS NULL OR
-    @OR_EmpDOB IS NULL OR
-    @OR_EmpTypeName IS NULL OR
-    @OR_CustFname IS NULL OR
-    @OR_CustLname IS NULL OR
-    @OR_CustDOB IS NULL OR
-    @OR_CustEmail IS NULL OR
-    @OR_CustTypeName IS NULL OR
-    @OR_Pname IS NULL OR
-    @OR_ALine1 IS NULL OR
-    @OR_ALine2 IS NULL OR
-    @OR_AZip IS NULL OR
-    @OR_ACityName IS NULL OR
-    @OR_AStateName IS NULL
-    THROW 50206, 'None of parameter should not be null', 1;
+IF  @OR_Date IS NULL OR 
+    @OR_EmpFName IS NULL OR 
+    @OR_EmpLName IS NULL OR 
+    @OR_EmpDOB IS NULL OR 
+    @OR_CustFname IS NULL OR 
+    @OR_CustLname IS NULL OR 
+    @OR_CustDOB IS NULL
 
 DECLARE @EmployeeID INT, @CustomerID INT
 
@@ -474,30 +403,21 @@ EXEC GetEmployeeID
 @E_FName = @OR_EmpFName,
 @E_LName = @OR_EmpLName,
 @E_DOB = @OR_EmpDOB,
-@E_EmployeeTypeName = @OR_EmpTypeName,
-@E_ID = @EmployeeID
+@E_ID = @EmployeeID OUTPUT
 
--- combined from Kha
+-- combined from Kha 
 EXEC GetCustomerID
 @C_Fname = @OR_CustFname,
 @C_Lname = @OR_CustLname,
 @C_DOB = @OR_CustDOB,
-@C_Email= @OR_CustEmail,
-@C_CustTypeName = @OR_CustTypeName,
-@C_Pname = @OR_Pname,
-@C_ALine1 = @OR_ALine1,
-@C_ALine2 = @OR_ALine2,
-@C_AZip = @OR_AZip,
-@C_ACityName = @OR_ACityName,
-@C_AStateName = @OR_AStateName,
-@C_ID = @CustomerID
+@C_ID = @CustomerID OUTPUT
 
 SET @OR_ID = (
     SELECT OrderID
     FROM tblORDER
     WHERE OrderDate = @OR_Date
-        AND CustomerID = @CustomerID
-        AND EmployeeID = @EmployeeID
+    AND CustomerID = @CustomerID
+    AND EmployeeID = @EmployeeID
 )
 GO
 ---------------------------------------------------------------------------------------------------

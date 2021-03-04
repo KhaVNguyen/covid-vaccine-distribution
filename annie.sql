@@ -171,23 +171,18 @@ ALTER PROCEDURE GetOrderID
     @OR_EmpFName        VARCHAR(50),
     @OR_EmpLName        VARCHAR(50),
     @OR_EmpDOB          DATE,
-    @OR_EmpTypeName     VARCHAR(50),
     @OR_CustFname       VARCHAR(50),
     @OR_CustLname       VARCHAR(50),
     @OR_CustDOB         DATE,
-    @OR_CustEmail       VARCHAR(50),
     @OR_ID              INT OUTPUT
 AS
 IF  @OR_Date IS NULL OR 
     @OR_EmpFName IS NULL OR 
     @OR_EmpLName IS NULL OR 
     @OR_EmpDOB IS NULL OR 
-    @OR_EmpTypeName IS NULL OR 
     @OR_CustFname IS NULL OR 
     @OR_CustLname IS NULL OR 
-    @OR_CustDOB IS NULL OR 
-    @OR_CustEmail IS NULL
-    THROW 50206, 'None of parameter should not be null', 1;
+    @OR_CustDOB IS NULL
 
 DECLARE @EmployeeID INT, @CustomerID INT
 
@@ -195,7 +190,6 @@ EXEC GetEmployeeID
 @E_FName = @OR_EmpFName,
 @E_LName = @OR_EmpLName,
 @E_DOB = @OR_EmpDOB,
-@E_EmployeeTypeName = @OR_EmpTypeName,
 @E_ID = @EmployeeID OUTPUT
 
 -- combined from Kha 
@@ -203,7 +197,6 @@ EXEC GetCustomerID
 @C_Fname = @OR_CustFname,
 @C_Lname = @OR_CustLname,
 @C_DOB = @OR_CustDOB,
-@C_Email= @OR_CustEmail,
 @C_ID = @CustomerID OUTPUT
 
 SET @OR_ID = (
@@ -321,62 +314,61 @@ DECLARE @EmployeeTypeID INT
     END 
 GO
 
--- insert Order
-CREATE PROCEDURE Ins_Order
-    @Ins_OrderDate            DATETIME,
-    @Ins_OrderEmpFName        VARCHAR(50),
-    @Ins_OrderEmpLName        VARCHAR(50),
-    @Ins_OrderEmpDOB          DATE,
-    @Ins_OrderEmpTypeName     VARCHAR(50),
-    @Ins_OrderCustFname       VARCHAR(50),
-    @Ins_OrderCustLname       VARCHAR(50),
-    @Ins_OrderCustDOB         DATE,
-    @Ins_OrderCustEmail       VARCHAR(50),
-    @Ins_OrderCustTypeName VARCHAR(50),
-    @Ins_OrderPname VARCHAR(50),
-    @Ins_OrderALine1 VARCHAR(100),
-    @Ins_OrderALine2 VARCHAR(100),
-    @Ins_OrderAZip VARCHAR(5),
-    @Ins_OrderACityName VARCHAR(50),
-    @Ins_OrderAStateName VARCHAR(50)
+-- Insert sproc order 
+CREATE OR ALTER PROC Ins_PopulateOrder
+@OrderDate DATETIME,
+@C_FName1 VARCHAR(50),
+@C_LName1 VARCHAR(50),
+@C_DOB1 DATE,
+@E_FName1 VARCHAR(50),
+@E_LName1 VARCHAR(50),
+@E_DOB1 DATE,
+@ProductName1 VARCHAR(50),
+@Quantity INT
 AS
-BEGIN
-    DECLARE @Ins_CustomerID INT, @Ins_EmployeeID INT
-        EXEC GetCustomerID
-        @C_Fname = @Ins_OrderCustFname,
-        @C_Lname = @Ins_OrderCustLname,
-        @C_DOB = @Ins_OrderCustDOB,
-        @C_Email = @Ins_OrderCustEmail,
-        @C_CustTypeName = @Ins_OrderCustTypeName,
-        @C_Pname = @Ins_OrderPname,
-        @C_ALine1 = @Ins_OrderALine1,
-        @C_ALine2 = @Ins_OrderALine2,
-        @C_AZip = @Ins_OrderAZip,
-        @C_ACityName = @Ins_OrderACityName,
-        @C_AStateName = @Ins_OrderAStateName,
-        @C_ID = @Ins_CustomerID OUTPUT
+	DECLARE @CustomerID INT
+	EXEC GetCustomerID
+	@C_Fname = @C_FName1,
+	@C_Lname = @C_LName1,
+	@C_DOB = @C_DOB1,
+	@C_ID = @CustomerID OUTPUT
 
-        IF @Ins_CustomerID IS NULL
-            THROW 50291, 'CustomerID should not be null', 1;
+	IF @CustomerID IS NULL
+		THROW 54000, 'Customer not found', 1;
 
-        EXEC GetEmployeeID
-        @E_FName = @Ins_OrderEmpFName,
-        @E_LName = @Ins_OrderEmpLName,
-        @E_DOB = @Ins_OrderEmpDOB,
-        @E_EmployeeTypeName = @Ins_OrderEmpTypeName,
-        @E_ID = @Ins_EmployeeID OUTPUT
+	DECLARE @EmployeeID INT
+	EXEC GetEmployeeID
+	@E_FName = @E_FName1,
+	@E_LName = @E_LName1,
+	@E_DOB = @E_DOB1,
+	@E_ID = @EmployeeID OUTPUT
 
-        IF @Ins_EmployeeID IS NULL
-            THROW 50290, 'EmployeeID should not be null', 1;
+	IF @EmployeeID IS NULL
+		THROW 54001, 'Employee not found', 1;
 
-        BEGIN TRAN T1
-            INSERT INTO tblORDER(OrderDate, CustomerID, EmployeeID)
-            VALUES (@Ins_OrderDate, @Ins_CustomerID, @Ins_EmployeeID)
-        IF @@ERROR <> 0
-            ROLLBACK TRAN T1
-        ELSE
-            COMMIT TRAN T1
-END
+	DECLARE @ProductID INT
+	EXEC GetProductID
+	@_ProductName = @ProductName1,
+	@_Out = @ProductID OUTPUT
+
+	IF @ProductID IS NULL
+		THROW 54002, 'Product not found', 1;
+
+	BEGIN TRAN T1
+		INSERT INTO tblORDER (OrderDate, CustomerID, EmployeeID)
+		VALUES (@OrderDate, @CustomerID, @EmployeeID)
+
+		DECLARE @OrderID INT = (SCOPE_IDENTITY())
+
+		INSERT INTO tblORDER_PRODUCT (ProductID, OrderID, Quantity)
+		VALUES (@ProductID, @OrderID, @Quantity)
+
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1;
+			THROW 54003, 'Something went wrong', 1;
+		END
+	COMMIT TRAN T1
 GO
 
 -------------------------- Populate EmployeeData --------------------------------------
@@ -482,83 +474,69 @@ SELECT * FROM tblCARRIER
 
 SELECT * FROM tblSHIPMENT
 
--- populate Order
+-- populate order and order product
 CREATE OR ALTER PROCEDURE PopulateOrder
 @NumsOrder INT
 AS
+    SELECT *, ROW_NUMBER() OVER(ORDER BY EmployeeID) AS RowNumber INTO Temp_tblEMPLOYEE FROM tblEMPLOYEE
+    SELECT *, ROW_NUMBER() OVER(ORDER BY CustomerID) AS RowNumber INTO Temp_tblCUSTOMER FROM tblCUSTOMER
+    SELECT *, ROW_NUMBER() OVER(ORDER BY ProductID) AS RowNumber INTO Temp_tblPRODUCT FROM tblPRODUCT
+
 	-- ORDERDATE AND EMPLOYEE DATA
-	DECLARE @RandOrderDate DATETIME, @Order_EmpFName VARCHAR(50), @Order_EmpLName VARCHAR(50), @Order_EmpBirthy DATE, @Order_EmpTypeName VARCHAR(50)
+	DECLARE @RandOrderDate DATETIME, @Order_EmpFName VARCHAR(50), @Order_EmpLName VARCHAR(50), @Order_EmpBirthy DATE
 	--CUSTOMER DATA
-	DECLARE @Order_CustFName VARCHAR(50), @Order_CustLName VARCHAR(50), @Order_CustBirthy DATE, @Order_CustEmail VARCHAR(50), @Order_CustTypeName VARCHAR(50)
-	DECLARE @Order_Pname VARCHAR(50), @Order_ALine1 VARCHAR(100), @Order_ALine2 VARCHAR(100), @Order_AZip VARCHAR(5), @Order_ACityName VARCHAR(50), @Order_AStateName VARCHAR(50)
+	DECLARE @Order_CustFName VARCHAR(50), @Order_CustLName VARCHAR(50), @Order_CustBirthy DATE
+    --PRODUCT DATA
+    DECLARE @Order_ProductName VARCHAR(50), @Qty INT
 	-- COUNTING ROWS
 	DECLARE @EmployeeCount INT = (SELECT COUNT(*) FROM tblEMPLOYEE)
 	DECLARE @CustomerCount INT = (SELECT COUNT(*) FROM tblCUSTOMER)
+    DECLARE @ProductCount INT = (SELECT COUNT(*) FROM tblPRODUCT)
 	-- CUSTOMER ID AND EMPLOYEE ID 
-	DECLARE @EmployeeID INT, @CustomerID INT
+	DECLARE @Emp_RandRowNumber INT, @Cust_RandRowNumber INT, @Prod_RandRowNumber INT
 	-- RANDOM DAYS
 	DECLARE @RandOrderDays INT
 	WHILE @NumsOrder > 0
     BEGIN
             SET @RandOrderDays = (SELECT RAND() * 100)
             -- Generate random date 
-            SET @OrderDate = DATEADD(DAY, @RandOrderDays, GETDATE())
+            SET @RandOrderDate = DATEADD(DAY, @RandOrderDays, GETDATE())
             -- Get random EmployeeID
-            SET @EmployeeID = (SELECT RAND() * @EmployeeCount + 1)
-            SET @Order_EmpFName = (SELECT EmployeeFName FROM tblEMPLOYEE WHERE EmployeeID = @EmployeeID)
-            SET @Order_EmpLName = (SELECT EmployeeLName FROM tblEMPLOYEE WHERE EmployeeID = @EmployeeID)
-            SET @Order_EmpBirthy = (SELECT EmployeeDOB FROM tblEMPLOYEE WHERE EmployeeID = @EmployeeID)
-            SET @Order_EmpTypeName = (SELECT ET.EmployeeTypeName FROM tblEMPLOYEE E JOIN tblEMPLOYEE_TYPE ET
-                                                                                ON E.EmployeeTypeID = ET.EmployeeTypeID
-                                                                                WHERE EmployeeID = @EmployeeID)
+            SET @Emp_RandRowNumber = (SELECT RAND() * @EmployeeCount + 1)
+            SET @Order_EmpFName = (SELECT EmployeeFName FROM Temp_tblEMPLOYEE WHERE RowNumber = @Emp_RandRowNumber)
+            SET @Order_EmpLName = (SELECT EmployeeLName FROM Temp_tblEMPLOYEE WHERE RowNumber = @Emp_RandRowNumber)
+            SET @Order_EmpBirthy = (SELECT EmployeeDOB FROM Temp_tblEMPLOYEE WHERE RowNumber = @Emp_RandRowNumber)
             -- Get random CustomerID
-            SET @CustomerID = (SELECT TOP 1 CustomerID FROM tblCUSTOMER ORDER BY NEWID())
-            SET @Order_CustFName = (SELECT CustomerFname FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
-            SET @Order_CustLName = (SELECT CustomerLname FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
-            SET @Order_CustBirthy = (SELECT CustomerDOB FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
-            SET @Order_CustEmail = (SELECT CustomerEmail FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
-            SET @Order_CustTypeName = (SELECT CT.CustomerTypeName FROM tblCUSTOMER C JOIN tblCUSTOMER_TYPE CT
-                                                                                ON C.CustomerTypeID = CT.CustomerTypeID 
-                                                                                WHERE CustomerID = @CustomerID)
-            SET @Order_Pname = (SELECT P.PriorityName FROM tblCUSTOMER C JOIN tblPRIORITY P 
-                                                                        ON C.PriorityID = P.PriorityID 
-                                                                        WHERE CustomerID = @CustomerID)
-            SET @Order_ALine1 = (SELECT A.AddressLine1 FROM tblCUSTOMER C JOIN tblADDRESS A
-                                                                        ON C.AddressID = A.AddressID
-                                                                        WHERE CustomerID = @CustomerID)
-            SET @Order_ALine2 = (SELECT A.AddressLine2 FROM tblCUSTOMER C JOIN tblADDRESS A
-                                                                        ON C.AddressID = A.AddressID
-                                                                         WHERE CustomerID = @CustomerID)  
-            SET @Order_AZip = (SELECT A.Zip FROM tblCUSTOMER C JOIN tblADDRESS A
-                                                                        ON C.AddressID = A.AddressID
-                                                                         WHERE CustomerID = @CustomerID)  
-            SET @Order_ACityName = (SELECT CI.CityName FROM tblCUSTOMER C JOIN tblADDRESS A
-                                                                        ON C.AddressID = A.AddressID
-                                                                        JOIN tblCITY CI
-                                                                        ON A.CityID = CI.CityID
-                                                                        WHERE CustomerID = @CustomerID)
-            SET @Order_AStateName = (SELECT S.StateName FROM tblCUSTOMER C JOIN tblADDRESS A
-                                                                        ON C.AddressID = A.AddressID
-                                                                        JOIN tblCITY CI
-                                                                        ON A.CityID = CI.CityID
-                                                                        JOIN tblSTATE S 
-                                                                        ON CI.StateID = S.StateID
-                                                                        WHERE CustomerID = @CustomerID)
+            SET @Cust_RandRowNumber = (SELECT RAND() * @CustomerCount + 1)
+            SET @Order_CustFName = (SELECT CustomerFname FROM Temp_tblCUSTOMER WHERE RowNumber = @Cust_RandRowNumber)
+            SET @Order_CustLName = (SELECT CustomerLname FROM Temp_tblCUSTOMER WHERE RowNumber = @Cust_RandRowNumber)
+            SET @Order_CustBirthy = (SELECT CustomerDOB FROM Temp_tblCUSTOMER WHERE RowNumber = @Cust_RandRowNumber)
+            -- Get random ProductID
+            SET @Prod_RandRowNumber = (SELECT RAND() * @ProductCount + 1)
+            SET @Order_ProductName = (SELECT ProductName FROM Temp_tblPRODUCT WHERE RowNumber = @Prod_RandRowNumber)
+            SET @Qty = (SELECT RAND() * 100 + 1)
 
             EXEC Ins_PopulateOrder
 			@OrderDate = @RandOrderDate,
-			@C_FName = 'Adelia',
-			@C_LName = 'Sudbeck',
-			@C_DOB = '2008-08-26',
-			@E_FName = 'Jetta',
-			@E_LName = 'Hunnings',
-			@E_DOB = '1990-11-06',
-			@ProductName = 'DJ-EPA-7733',
-			@Quantity = 10
+			@C_FName1 = @Order_CustFName,
+			@C_LName1 = @Order_CustLName,
+			@C_DOB1 = @Order_CustBirthy,
+			@E_FName1 = @Order_EmpFName,
+			@E_LName1 = @Order_EmpLName,
+			@E_DOB1 = @Order_EmpBirthy,
+			@ProductName1 = @Order_ProductName,
+			@Quantity = @Qty
 
         SET @NumsOrder = @NumsOrder - 1
     END
+
+    DROP TABLE Temp_tblEMPLOYEE
+    DROP TABLE Temp_tblCUSTOMER
+    DROP TABLE Temp_tblPRODUCT
 GO
+
+EXEC PopulateOrder
+@NumsOrder = 5
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
@@ -656,9 +634,9 @@ ALTER TABLE tblORDER
 ADD TotalOrderProduct AS (dbo.FN_TotalOrderEachProduct (ProductID)) 
 GO
 
---------------------------------------------------------------
+------------------------Code from Tom--------------------------------------
 -- New GetCustomerID
-CREATE OR ALTER PROCEDURE GetCustomerID
+/*CREATE OR ALTER PROCEDURE GetCustomerID
 @C_Fname VARCHAR(50),
 @C_Lname VARCHAR(50),
 @C_DOB DATE,
@@ -728,3 +706,4 @@ AS
 		END
 	COMMIT TRAN T1
 GO
+*/
