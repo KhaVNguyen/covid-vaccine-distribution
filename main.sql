@@ -1227,6 +1227,19 @@ GROUP BY
     )
 GO
 
+CREATE OR ALTER VIEW TotalNonHighPriorityHouseholds AS
+SELECT COUNT(*) AS TotalNumNonHighPriorityHouseholds
+FROM tblADDRESS
+    JOIN tblCUSTOMER ON tblADDRESS.AddressID = tblCUSTOMER.AddressID
+WHERE tblCustomer.CustomerID NOT IN  
+    (
+        SELECT CustomerID 
+        FROM tblCUSTOMER
+            JOIN tblPRIORITY ON tblCUSTOMER.PriorityID = tblPRIORITY.PriorityID
+        WHERE PriorityName = '1A - LTCF & Healthcare Personnel' OR PriorityName = '1C - 65-74 & High Risk'
+    )
+GO
+
 ---------------------------------------------------------------------------------------------------
 -- Checking Tables
 ---------------------------------------------------------------------------------------------------
