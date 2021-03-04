@@ -288,8 +288,6 @@ CREATE OR ALTER PROCEDURE GetShipmentTypeID
     @ST_Name    VARCHAR(50),
     @ST_ID      INT OUTPUT
 AS
-IF @ST_Name IS NULL
-    THROW 50201, 'ShipmentTypeName is null', 1;
 SET @ST_ID = (
     SELECT ShipmentTypeID
     FROM tblSHIPMENT_TYPE
@@ -302,9 +300,6 @@ CREATE OR ALTER PROCEDURE GetCarrierID
     @CR_Name    VARCHAR(50),
     @CR_ID      INT OUTPUT
 AS
-IF @CR_Name IS NULL
-    THROW 50202, 'Carrier Name or City Name is null', 1;
-
 SET @CR_ID = (
     SELECT CarrierID
     FROM tblCARRIER
@@ -320,9 +315,6 @@ CREATE OR ALTER PROCEDURE GetShipmentID
     @SP_CarrierName         VARCHAR(50),
     @SP_ID                  INT OUTPUT
 AS
-IF @SP_TrackingNum IS NULL OR @SP_Date IS NULL OR @SP_ShipmentTypeName IS NULL OR
-    @SP_CarrierName IS NULL
-    THROW 50203, 'None of parameter should not be null', 1;
 DECLARE @ShipmentTypeID INT, @CarrierID INT
 
 EXEC GetShipmentTypeID
@@ -349,8 +341,6 @@ CREATE OR ALTER PROCEDURE GetEmployeeTypeID
     @ET_Name     VARCHAR(50),
     @ET_ID       INT OUTPUT 
 AS 
-IF @ET_Name IS NULL
-    THROW 50204, 'EmployeeTypeName is null', 1; 
 SET @ET_ID = (
     SELECT EmployeeTypeID
     FROM tblEMPLOYEE_TYPE 
@@ -462,7 +452,7 @@ EXEC GetShipmentTypeID
 @ST_ID = @ShipmentTypeID OUTPUT
 
     IF @ShipmentTypeID IS NULL
-        BEGIN
+    BEGIN
         THROW 50207, '@ShipmentTypeID is not found', 1;
     END
 
@@ -471,9 +461,9 @@ EXEC GetCarrierID
 @CR_ID = @CarrierID OUTPUT
     
     IF @CarrierID IS NULL 
-        BEGIN
+    BEGIN
         THROW 50300, '@CarrierID is not found', 1;
-        END
+    END
 
     BEGIN TRANSACTION T1
         INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
@@ -501,8 +491,10 @@ DECLARE @EmployeeTypeID INT
     @ET_ID = @EmployeeTypeID OUTPUT
 
     IF @EmployeeTypeID IS NULL
+    BEGIN
         THROW 50209, '@EmployeeTypeID is not found', 1;
-
+    END
+    
     BEGIN TRANSACTION T1
         INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
         VALUES(@Ins_EmpFName,@Ins_EmpLName, @Ins_EmpDOB, @EmployeeTypeID)
