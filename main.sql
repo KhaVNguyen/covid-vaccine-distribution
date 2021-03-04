@@ -419,14 +419,318 @@ SET @OR_ID = (
 )
 GO
 ---------------------------------------------------------------------------------------------------
+-- Insert data into tables without FK
+---------------------------------------------------------------------------------------------------
+-- EMPLOYEE DATA
+CREATE TABLE  tblRAW_EmpData-- CREATE SCRIPT TABLE
+(Emp_PK_ID INT IDENTITY (1,1) primary key,
+Emp_FName VARCHAR(50) NOT NULL,
+Emp_LName VARCHAR(50) NOT NULL,
+Emp_DOB DATE NOT NULL)
+
+INSERT INTO tblRAW_EmpData -- INSERT DATA FROM ORIGINAL TABLE/DATASET
+(Emp_FName, Emp_LName, Emp_DOB)
+SELECT CustomerFname, CustomerLname, DateOfBirth
+FROM PEEPS.dbo.tblCUSTOMER
+
+-- EMPLOYEE TYPE DATA
+INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc) 
+VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
+
+-- Shipment Type Data 
+INSERT INTO tblSHIPMENT_TYPE(ShipmentTypeName, ShipmentTypeDesc)
+VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Estimated 1-3 days'), ('Parcel', 'Estimated 2-8 days'), ('First Class', 'Estimated 1–3 days up to 13 oz')
+
+-- Carrier Data
+INSERT INTO tblCARRIER(CarrierName)
+VALUES('UPS'),('USPS'),('DHL'),('FedEx')
+
+
+---------------------------------------------------------------------------------------------------
 -- Insert Stored Procedure
 ---------------------------------------------------------------------------------------------------
+-- Insert shipment 
+CREATE OR ALTER PROCEDURE Ins_Shipment
+    @InsSP_TrackingNum         VARCHAR(50),
+    @InsSP_Date                DATETIME,
+    @InsSP_ShipmentTypeName    VARCHAR(50),
+    @InsSP_CarrierName         VARCHAR(50)
+AS 
+BEGIN
+DECLARE @ShipmentTypeID INT, @CarrierID INT
 
+EXEC GetShipmentTypeID
+@ST_Name = @InsSP_ShipmentTypeName,
+@ST_ID = @ShipmentTypeID OUTPUT
+
+    IF @ShipmentTypeID IS NULL
+        BEGIN
+        THROW 50207, '@ShipmentTypeID is not found', 1;
+    END
+
+EXEC GetCarrierID
+@CR_Name = @InsSP_CarrierName,
+@CR_ID = @CarrierID OUTPUT
+    
+    IF @CarrierID IS NULL 
+        BEGIN
+        THROW 50300, '@CarrierID is not found', 1;
+        END
+
+    BEGIN TRANSACTION T1
+        INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
+        VALUES (@InsSP_TrackingNum, @InsSP_Date, @ShipmentTypeID, @CarrierID)
+    IF @@ERROR <> 0 
+        ROLLBACK TRANSACTION T1
+    ELSE 
+        COMMIT TRANSACTION T1
+    END 
+GO
+
+
+-- Insert Employee
+CREATE OR ALTER PROCEDURE Ins_Employee
+    @Ins_EmpFName            VARCHAR(50),
+    @Ins_EmpLName            VARCHAR(50),
+    @Ins_EmpDOB              DATE,
+    @Ins_EmpTypeName         VARCHAR(50)
+AS
+BEGIN
+DECLARE @EmployeeTypeID INT
+
+    EXEC GetEmployeeTypeID
+    @ET_Name = @Ins_EmpTypeName,
+    @ET_ID = @EmployeeTypeID OUTPUT
+
+    IF @EmployeeTypeID IS NULL
+        THROW 50209, '@EmployeeTypeID is not found', 1;
+
+    BEGIN TRANSACTION T1
+        INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
+        VALUES(@Ins_EmpFName,@Ins_EmpLName, @Ins_EmpDOB, @EmployeeTypeID)
+    IF @@ERROR <> 0 
+        ROLLBACK TRANSACTION T1
+    ELSE 
+        COMMIT TRANSACTION T1
+    END 
+GO
+
+-- Insert sproc order 
+CREATE OR ALTER PROC Ins_PopulateOrder
+@OrderDate DATETIME,
+@C_FName1 VARCHAR(50),
+@C_LName1 VARCHAR(50),
+@C_DOB1 DATE,
+@E_FName1 VARCHAR(50),
+@E_LName1 VARCHAR(50),
+@E_DOB1 DATE,
+@ProductName1 VARCHAR(50),
+@Quantity INT
+AS
+	DECLARE @CustomerID INT
+	EXEC GetCustomerID
+	@C_Fname = @C_FName1,
+	@C_Lname = @C_LName1,
+	@C_DOB = @C_DOB1,
+	@C_ID = @CustomerID OUTPUT
+
+	IF @CustomerID IS NULL
+		THROW 54000, 'Customer not found', 1;
+
+	DECLARE @EmployeeID INT
+	EXEC GetEmployeeID
+	@E_FName = @E_FName1,
+	@E_LName = @E_LName1,
+	@E_DOB = @E_DOB1,
+	@E_ID = @EmployeeID OUTPUT
+
+	IF @EmployeeID IS NULL
+		THROW 54001, 'Employee not found', 1;
+
+	DECLARE @ProductID INT
+	EXEC GetProductID
+	@_ProductName = @ProductName1,
+	@_Out = @ProductID OUTPUT
+
+	IF @ProductID IS NULL
+		THROW 54002, 'Product not found', 1;
+
+	BEGIN TRAN T1
+		INSERT INTO tblORDER (OrderDate, CustomerID, EmployeeID)
+		VALUES (@OrderDate, @CustomerID, @EmployeeID)
+
+		DECLARE @OrderID INT = (SCOPE_IDENTITY())
+
+		INSERT INTO tblORDER_PRODUCT (ProductID, OrderID, Quantity)
+		VALUES (@ProductID, @OrderID, @Quantity)
+
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1;
+			THROW 54003, 'Something went wrong', 1;
+		END
+	COMMIT TRAN T1
+GO
 
 ---------------------------------------------------------------------------------------------------
 -- Populating Data
 ---------------------------------------------------------------------------------------------------
---code here
+-- populate customer 
+INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
+SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2 
+FROM tblRAW_EmpData
+
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Executive')
+WHERE EmployeeID LIKE '%51' 
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Part-Time')
+WHERE EmployeeID LIKE '%3_'
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Contingent')
+WHERE EmployeeID LIKE '%72'
+
+UPDATE tblEMPLOYEE
+SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Temporary')
+WHERE EmployeeID LIKE '%84'
+
+UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Full-Time')
+
+SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E 
+        JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
+GROUP BY ET.EmployeeTypeName
+
+IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
+     DROP TABLE tblRAW_EmpData
+GO
+
+-- generate tracking num
+CREATE OR ALTER PROCEDURE GenerateTrackingNumber 
+@Output VARCHAR(12) OUTPUT
+AS
+BEGIN
+    DECLARE @Result VARCHAR(12) = ''
+    DECLARE @Run INT = 1
+    WHILE @Run <= 12
+        BEGIN
+            DECLARE @RandomNumber INT = FLOOR(RAND() * 10) 
+            SET @Result = CONCAT(@Result, @RandomNumber)
+            SET @Run = @Run + 1
+        END
+    SET @Output = @Result
+END
+GO
+
+DECLARE @TrackingNum VARCHAR(12)
+EXEC GenerateTrackingNumber @Output = @TrackingNum OUTPUT
+PRINT (@TrackingNum)
+GO
+
+-- populate data for shipment
+CREATE OR ALTER PROCEDURE PopulateShipment
+@NumsShipment INT
+AS
+DECLARE @Shipment_TrackingNum VARCHAR(12), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50)
+DECLARE @ShipmentTypeCount INT = (SELECT COUNT(*) FROM tblSHIPMENT_TYPE)
+DECLARE @ShipmentType_ID INT, @Carrier_ID INT
+DECLARE @RandShipDays INT, @Number INT
+WHILE @NumsShipment > 0
+    BEGIN
+            SET @RandShipDays = (SELECT RAND() * 100)
+            -- Generate random tracking number
+            EXEC GenerateTrackingNumber
+            @Output = @Shipment_TrackingNum OUTPUT 
+            -- Generate random date 
+            SET @Shipment_Date = DATEADD(DAY, @RandShipDays, GETDATE())
+            -- Get random shipmentTypeID 
+            SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
+            SET @Shipment_TypeName = (SELECT ShipmentTypeName FROM tblSHIPMENT_TYPE WHERE ShipmentTypeID = @ShipmentType_ID)
+            -- Get random carrierID
+            SET @Number = (SELECT RAND() * 100) 
+            SET @Shipment_CarrierName= (CASE
+                                        WHEN @Number < 20
+                                        THEN 'UPS'
+                                        WHEN @Number BETWEEN 20 AND 40
+                                        THEN 'USPS'
+                                        WHEN @Number BETWEEN 40 AND 70
+                                        THEN 'DHL'
+                                        ELSE 'FedEx'
+                                        END)
+
+            EXEC Ins_Shipment
+            @InsSP_TrackingNum = @Shipment_TrackingNum,
+            @InsSP_Date = @Shipment_Date,
+            @InsSP_ShipmentTypeName = @Shipment_TypeName,
+            @InsSP_CarrierName = @Shipment_CarrierName
+
+        SET @NumsShipment = @NumsShipment - 1
+    END
+GO
+
+-- populate order and order product
+CREATE OR ALTER PROCEDURE PopulateOrder
+@NumsOrder INT
+AS
+    SELECT *, ROW_NUMBER() OVER(ORDER BY EmployeeID) AS RowNumber INTO Temp_tblEMPLOYEE FROM tblEMPLOYEE
+    SELECT *, ROW_NUMBER() OVER(ORDER BY CustomerID) AS RowNumber INTO Temp_tblCUSTOMER FROM tblCUSTOMER
+    SELECT *, ROW_NUMBER() OVER(ORDER BY ProductID) AS RowNumber INTO Temp_tblPRODUCT FROM tblPRODUCT
+
+	-- ORDERDATE AND EMPLOYEE DATA
+	DECLARE @RandOrderDate DATETIME, @Order_EmpFName VARCHAR(50), @Order_EmpLName VARCHAR(50), @Order_EmpBirthy DATE
+	--CUSTOMER DATA
+	DECLARE @Order_CustFName VARCHAR(50), @Order_CustLName VARCHAR(50), @Order_CustBirthy DATE
+    --PRODUCT DATA
+    DECLARE @Order_ProductName VARCHAR(50), @Qty INT
+	-- COUNTING ROWS
+	DECLARE @EmployeeCount INT = (SELECT COUNT(*) FROM tblEMPLOYEE)
+	DECLARE @CustomerCount INT = (SELECT COUNT(*) FROM tblCUSTOMER)
+    DECLARE @ProductCount INT = (SELECT COUNT(*) FROM tblPRODUCT)
+	-- CUSTOMER ID AND EMPLOYEE ID 
+	DECLARE @Emp_RandRowNumber INT, @Cust_RandRowNumber INT, @Prod_RandRowNumber INT
+	-- RANDOM DAYS
+	DECLARE @RandOrderDays INT
+	WHILE @NumsOrder > 0
+    BEGIN
+            SET @RandOrderDays = (SELECT RAND() * 100)
+            -- Generate random date 
+            SET @RandOrderDate = DATEADD(DAY, @RandOrderDays, GETDATE())
+            -- Get random EmployeeID
+            SET @Emp_RandRowNumber = (SELECT RAND() * @EmployeeCount + 1)
+            SET @Order_EmpFName = (SELECT EmployeeFName FROM Temp_tblEMPLOYEE WHERE RowNumber = @Emp_RandRowNumber)
+            SET @Order_EmpLName = (SELECT EmployeeLName FROM Temp_tblEMPLOYEE WHERE RowNumber = @Emp_RandRowNumber)
+            SET @Order_EmpBirthy = (SELECT EmployeeDOB FROM Temp_tblEMPLOYEE WHERE RowNumber = @Emp_RandRowNumber)
+            -- Get random CustomerID
+            SET @Cust_RandRowNumber = (SELECT RAND() * @CustomerCount + 1)
+            SET @Order_CustFName = (SELECT CustomerFname FROM Temp_tblCUSTOMER WHERE RowNumber = @Cust_RandRowNumber)
+            SET @Order_CustLName = (SELECT CustomerLname FROM Temp_tblCUSTOMER WHERE RowNumber = @Cust_RandRowNumber)
+            SET @Order_CustBirthy = (SELECT CustomerDOB FROM Temp_tblCUSTOMER WHERE RowNumber = @Cust_RandRowNumber)
+            -- Get random ProductID
+            SET @Prod_RandRowNumber = (SELECT RAND() * @ProductCount + 1)
+            SET @Order_ProductName = (SELECT ProductName FROM Temp_tblPRODUCT WHERE RowNumber = @Prod_RandRowNumber)
+            SET @Qty = (SELECT RAND() * 100 + 1)
+
+            EXEC Ins_PopulateOrder
+			@OrderDate = @RandOrderDate,
+			@C_FName1 = @Order_CustFName,
+			@C_LName1 = @Order_CustLName,
+			@C_DOB1 = @Order_CustBirthy,
+			@E_FName1 = @Order_EmpFName,
+			@E_LName1 = @Order_EmpLName,
+			@E_DOB1 = @Order_EmpBirthy,
+			@ProductName1 = @Order_ProductName,
+			@Quantity = @Qty
+
+        SET @NumsOrder = @NumsOrder - 1
+    END
+
+    DROP TABLE Temp_tblEMPLOYEE
+    DROP TABLE Temp_tblCUSTOMER
+    DROP TABLE Temp_tblPRODUCT
+GO
+
 
 ---------------------------------------------------------------------------------------------------
 -- Synthetic Trans
