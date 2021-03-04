@@ -673,7 +673,7 @@ AS
 	)
 GO
 
-CREATE PROC Ins_PopulateOrder
+CREATE OR ALTER PROC Ins_PopulateOrder
 @OrderDate DATETIME,
 @C_FName VARCHAR(50),
 @C_LName VARCHAR(50),
@@ -709,8 +709,8 @@ AS
 	@_ProductName = @ProductName,
 	@_Out = @ProductID OUTPUT
 
-	IF @EmployeeID IS NULL
-		THROW 54001, 'Employee not found', 1;
+	IF @ProductID IS NULL
+		THROW 54002, 'Product not found', 1;
 
 	BEGIN TRAN T1
 		INSERT INTO tblORDER (OrderDate, CustomerID, EmployeeID)
@@ -724,7 +724,7 @@ AS
 		IF @@ERROR <> 0
 		BEGIN
 			ROLLBACK TRAN T1;
-			THROW 54002, 'Something went wrong', 1;
+			THROW 54003, 'Something went wrong', 1;
 		END
 	COMMIT TRAN T1
 GO
