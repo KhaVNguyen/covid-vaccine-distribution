@@ -1,8 +1,6 @@
 USE INFO430_Proj_10
 GO
 
-SELECT * FROM tblPRODUCT
-
 ---------------------------------------------------------------------------------------------------
 -- Create Tables
 ---------------------------------------------------------------------------------------------------
@@ -196,6 +194,11 @@ IF NOT EXISTS (SELECT TOP 1 * FROM tblDETAIL)
 	('Maximum Temperature', 'Maximum temperature in celsius that the product can withstand'),
 	('Recommended Temperature', 'Recommended temperature in celsius for storing the product'),
 	('Weight', 'Weight in grams for a single product unit.')
+
+IF NOT EXISTS (SELECT TOP 1 * FROM tblCUSTOMER_TYPE)
+	INSERT INTO tblCUSTOMER_TYPE (CustomerTypeName) VALUES
+	('Hospital'), ('Clinic'), ('Household'), ('Individual'), ('Federal Institution'),
+	('State Institution'), ('Research Institution'), ('University'), ('School')
 
 ---------------------------------------------------------------------------------------------------
 -- Populate Transaction Tables: tblPRODUCT, tblPRODUCT_DETAIL, tblDETAIL
