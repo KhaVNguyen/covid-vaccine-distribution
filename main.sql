@@ -432,11 +432,118 @@ VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Est
 -- Carrier Data
 INSERT INTO tblCARRIER(CarrierName)
 VALUES('UPS'),('USPS'),('DHL'),('FedEx')
-
+GO
 
 ---------------------------------------------------------------------------------------------------
 -- Insert Stored Procedure
 ---------------------------------------------------------------------------------------------------
+-- Insert address
+CREATE OR ALTER PROCEDURE 
+CreateNewAddress
+@AddressLine1 VARCHAR(100),
+@AddressLine2 VARCHAR(100),
+@Zip VARCHAR(5),
+@CityName VARCHAR(100),
+@StateName VARCHAR(100)
+AS
+BEGIN
+
+DECLARE @CityID INT, @StateID INT
+
+EXEC GetCityID 
+@C_Name = @CityName,
+@C_ID = @CityID OUTPUT
+IF @CityID IS NULL 
+    THROW 55000, 'City does not exist', 1
+
+EXEC GetStateID 
+@S_Name = @StateName,
+@S_ID = @StateID OUTPUT
+IF @StateID IS NULL
+    THROW 55001, 'State does not exist', 1
+
+IF (SELECT StateID FROM tblCITY WHERE CityID = @CityID) <> @StateID
+    THROW 55002, 'This city is not in this state', 1
+
+BEGIN TRANSACTION
+INSERT INTO tblADDRESS(AddressLine1, AddressLine2, Zip, CityID, StateID)
+VALUES (@AddressLine1, @AddressLine2, @Zip, @CityID, @StateID)
+IF @@ERROR <> 0 
+    ROLLBACK
+ELSE 
+    COMMIT
+END 
+GO
+
+-- Insert customer
+CREATE OR ALTER PROCEDURE 
+CreateNewCustomer
+@CustomerFname VARCHAR(50),
+@CustomerLname VARCHAR(50),
+@CustomerDOB DATE,
+@CustomerAddressLine1 VARCHAR(100),
+@CustomerAddressLine2 VARCHAR(100),
+@CustomerZip VARCHAR(5),
+@CustomerCityName VARCHAR(100),
+@CustomerStateName VARCHAR(100),
+@CustomerEmail VARCHAR(50),
+@Priority VARCHAR(50),
+@CustomerType VARCHAR(50)
+AS
+BEGIN
+
+DECLARE @AddressID INT, @PriorityID INT, @CustomerTypeID INT
+
+EXEC GetAddressID 
+@A_Line1 = @CustomerAddressLine1,
+@A_Line2 = @CustomerAddressLine2,
+@A_Zip = @CustomerZip,
+@A_CityName = @CustomerCityName,
+@A_StateName = @CustomerStateName,
+@A_ID = @AddressID OUTPUT
+
+IF @AddressID IS NULL 
+    BEGIN
+        EXEC CreateNewAddress
+        @AddressLine1 = @CustomerAddressLine1,
+        @Addressline2 = @CustomerAddressLine2,
+        @Zip = @CustomerZip,
+        @CityName = @CustomerCityName, 
+        @StateName = @CustomerStateName
+    END
+
+EXEC GetAddressID 
+@A_Line1 = @CustomerAddressLine1,
+@A_Line2 = @CustomerAddressLine2,
+@A_Zip = @CustomerZip,
+@A_CityName = @CustomerCityName,
+@A_StateName = @CustomerStateName,
+@A_ID = @AddressID OUTPUT
+
+EXEC GetPriorityID
+@P_Name = @Priority,
+@P_ID = @PriorityID OUTPUT
+IF @PriorityID IS NULL 
+    THROW 58000, 'Priority does not exist', 1
+
+-- Get Customer Type ID
+EXEC GetCustomerTypeID
+@_CustomerTypeName = @CustomerType,
+@_OUT = @CustomerTypeID OUTPUT
+IF @CustomerTypeID IS NULL 
+    THROW 59000, 'Customer type does not exist', 1
+
+BEGIN TRANSACTION
+INSERT INTO tblCUSTOMER (CustomerFname, CustomerLname, CustomerDOB, CustomerEmail, AddressID, PriorityID, CustomerTypeID)
+VALUES (@CustomerFname, @CustomerLname, @CustomerDOB, @CustomerEmail, @AddressID, @PriorityID, @CustomerTypeID)
+
+IF @@ERROR <> 0 
+    ROLLBACK
+ELSE 
+    COMMIT
+END 
+GO
+
 -- Insert shipment 
 CREATE OR ALTER PROCEDURE Ins_Shipment
     @InsSP_TrackingNum         VARCHAR(50),
@@ -565,11 +672,242 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Populating Data
 ---------------------------------------------------------------------------------------------------
--- populate customer 
+-- populate priorities
+INSERT INTO tblPRIORITY (PriorityName, PriorityDesc)
+VALUES 
+    ('1A - LTCF & Healthcare Personnel', 'Long term care facility members and authorized front-line healthcare workers'),
+    ('1B - 75+ & Frontline Essential Workers', 'Older people of 75+ years & frontline essential workers, key to functionality of critical operations'),
+    ('1C - 65-74 & High Risk', 'Those between ages 65-74 or those with high risk medical conditions'),
+    ('2 - Older Adults', 'Older adults not served in Phase 1 (ages 40+)'),
+    ('3 - Young Adults & Children', 'Younger adults (ages 18-39) and children')
+GO
+
+-- populate cities and states
+-- Insert cities and states
+CREATE OR ALTER PROCEDURE 
+PopulateCitiesAndStates
+AS 
+BEGIN
+-- create temporary table 
+SELECT CityName, StateName 
+INTO #CitiesAndStatesTemp
+FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP]
+
+DECLARE @Run INT = 1
+DECLARE @NumRows INT = (SELECT COUNT(*) FROM #CitiesAndStatesTemp)
+
+WHILE @Run <= @NumRows 
+    BEGIN 
+        DECLARE @City VARCHAR(50) = (SELECT TOP 1 CityName FROM #CitiesAndStatesTemp)
+        DECLARE @State VARCHAR(50) = (SELECT TOP 1 StateName FROM #CitiesAndStatesTemp)
+        DECLARE @StateCode VARCHAR(2) = (SELECT TOP 1 RIGHT(StateName, 2) FROM #CitiesAndStatesTemp)
+
+        -- Insert into tblSTATE
+        IF NOT EXISTS (
+            SELECT * FROM tblSTATE
+            WHERE StateName = @State
+        )
+        BEGIN
+            INSERT INTO tblSTATE(StateName, StateCode)
+            VALUES (@State, @StateCode)
+        END
+
+        -- Find StateID
+        DECLARE @StateID INT = (
+            SELECT StateID
+            FROM tblSTATE
+            WHERE StateName = @State
+        )
+
+        -- INSERT INTO tblCITY
+        IF NOT EXISTS (
+            SELECT * FROM tblCITY
+            WHERE CityName = @City
+        )
+        BEGIN
+            INSERT INTO tblCITY (CityName, StateID)
+            VALUES (@City, @StateID)
+        END
+
+        -- Delete from temp table
+        DELETE TOP(1)
+        FROM #CitiesAndStatesTemp
+
+        SET @Run = @Run + 1
+    END 
+END
+GO
+
+-- Populate addresses
+CREATE OR ALTER PROCEDURE 
+PopulateAddresses
+@NumberOfAddresses INTEGER
+AS
+BEGIN
+DECLARE @Run INTEGER = 1
+WHILE @Run <= @NumberOfAddresses
+    BEGIN
+    -- get a random city
+    
+    DECLARE @RandomCityName VARCHAR(100) = (
+        SELECT TOP 1 CityName 
+        FROM tblCITY
+        ORDER BY NEWID()
+    )
+
+    -- get the state associated with that city
+    DECLARE @RandomStateName VARCHAR(100) = (
+        SELECT StateName
+        FROM tblCITY
+            JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID
+        WHERE CityName = @RandomCityName
+    )
+
+    DECLARE @RandomHouseNumber VARCHAR(5) = (
+        SELECT TOP 1 HouseNumber 
+        FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomStreetName VARCHAR(75) = (
+        SELECT TOP 1 StreetName 
+        FROM [PEEPS].[dbo].[tblSTREET_NAME] 
+        ORDER BY NEWID()
+    )
+
+    
+    DECLARE @RandomStreetSuffix VARCHAR(25) = (
+        SELECT TOP 1 StreetSuffix 
+        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] 
+        ORDER BY NEWID()
+    )
+    
+    DECLARE @RandomZip VARCHAR(75) = (
+        SELECT TOP 1 Zip  
+        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] 
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomAddressLine1 VARCHAR(500) = CONCAT(@RandomHouseNumber, ' ', @RandomStreetName, ' ', @RandomStreetSuffix)
+
+    EXEC CreateNewAddress
+    @AddressLine1  = @RandomAddressLine1,
+    @AddressLine2 = 'Random address line 2',
+    @Zip = @RandomZip,
+    @CityName = @RandomCityName,
+    @StateName = @RandomStateName
+
+    SET @Run = @Run + 1
+
+    END
+END
+GO
+
+-- populate customers
+CREATE OR ALTER PROCEDURE 
+PopulateCustomers
+@NumberOfCustomers INT
+AS 
+BEGIN
+DECLARE @Run INTEGER = 1
+WHILE @Run <= @NumberOfCustomers
+    BEGIN
+
+    -- Generate random address
+     DECLARE @RandomCityName VARCHAR(100) = (
+        SELECT TOP 1 CityName 
+        FROM tblCITY
+        ORDER BY NEWID()
+    )
+
+    -- get the state associated with that city
+    DECLARE @RandomStateName VARCHAR(100) = (
+        SELECT StateName
+        FROM tblCITY
+            JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID
+        WHERE CityName = @RandomCityName
+    )
+
+    DECLARE @RandomHouseNumber VARCHAR(5) = (
+        SELECT TOP 1 HouseNumber 
+        FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomStreetName VARCHAR(75) = (
+        SELECT TOP 1 StreetName 
+        FROM [PEEPS].[dbo].[tblSTREET_NAME] 
+        ORDER BY NEWID()
+    )
+
+    
+    DECLARE @RandomStreetSuffix VARCHAR(25) = (
+        SELECT TOP 1 StreetSuffix 
+        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] 
+        ORDER BY NEWID()
+    )
+    
+    DECLARE @RandomZip VARCHAR(75) = (
+        SELECT TOP 1 Zip  
+        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] 
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomAddressLine1 VARCHAR(500) = CONCAT(@RandomHouseNumber, ' ', @RandomStreetName, ' ', @RandomStreetSuffix)
+
+    -- Generate customer info 
+    DECLARE @RandomFirstName VARCHAR(50) = (
+        SELECT TOP 1 FirstName 
+        FROM [PEEPS].[dbo].[tblFIRST_NAME]
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomLastName VARCHAR(50) = (
+        SELECT TOP 1 LastName 
+        FROM [PEEPS].[dbo].[tblLAST_NAME]
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomEmail VARCHAR(50) = CONCAT(@RandomFirstName, @RandomLastName, '@gmail.com')
+
+    DECLARE @RandomDateOfBirth DATE = DATEADD(DAY, -(ABS(CHECKSUM(NEWID()) % 36500 )), getdate())
+
+
+    DECLARE @RandomPriority VARCHAR(50) = (
+        SELECT TOP 1 PriorityName 
+        FROM tblPRIORITY
+        ORDER BY NEWID()
+    )
+
+    DECLARE @RandomCustomerType VARCHAR(50) = (
+        SELECT TOP 1 CustomerTypeName 
+        FROM tblCUSTOMER_TYPE
+        ORDER BY NEWID()
+    )
+
+    EXEC CreateNewCustomer
+    @CustomerFname = @RandomFirstName,
+    @CustomerLname = @RandomLastName,
+    @CustomerDOB = @RandomDateOfBirth,
+    @CustomerAddressLine1 = @RandomAddressLine1,
+    @CustomerAddressLine2 = 'Random address line 2',
+    @CustomerZip = @RandomZip,
+    @CustomerCityName = @RandomCityName,
+    @CustomerStateName = @RandomStateName,
+    @CustomerEmail = @RandomEmail,
+    @Priority = @RandomPriority,
+    @CustomerType = @RandomCustomerType
+
+    SET @Run = @Run + 1
+
+    END
+END
+GO
+
+-- populate employees
 INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
 SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2 
 FROM tblRAW_EmpData
-
 
 UPDATE tblEMPLOYEE
 SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Executive')
@@ -725,30 +1063,169 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Test Populating Data
 ---------------------------------------------------------------------------------------------------
+EXEC PopulateCitiesAndStates
+
+EXEC PopulateAddresses
+@NumberOfAddresses = 1000
+
+EXEC PopulateCustomers
+@NumberOfCustomers = 1000
+
 EXEC PopulateShipment
 @NumsShipment = 5
 
 EXEC PopulateOrder
 @NumsOrder = 5
 
+GO
+
 
 ---------------------------------------------------------------------------------------------------
 -- Business Rules
 ---------------------------------------------------------------------------------------------------
---code here
+-- Cities must be in the correct state for addresses
+CREATE FUNCTION fn_AddressCityMustBeInState()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0
+	IF EXISTS 
+    (
+		SELECT *
+		FROM tblADDRESS
+        JOIN tblCITY ON tblADDRESS.CityID = tblCITY.CityID
+		WHERE tblADDRESS.StateID <> tblCITY.StateID
+	)
+	BEGIN
+		SET @RET = 1
+	END
+RETURN @RET
+END
+GO
 
+ALTER TABLE tblADDRESS with nocheck
+ADD CONSTRAINT CK_AddressCityMustBeInState
+CHECK (dbo.fn_AddressCityMustBeInState() = 0)
+GO
+
+-- Only 50 states can exist
+CREATE FUNCTION fn_50StatesMax()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0
+	IF  
+    (
+		SELECT COUNT(*)
+		FROM tblSTATE
+	) > 50
+	BEGIN
+		SET @RET = 1
+	END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblSTATE with nocheck
+ADD CONSTRAINT CK_50StatesMax
+CHECK (dbo.fn_50StatesMax() = 0)
+GO
 
 ---------------------------------------------------------------------------------------------------
 -- Computed Columns
 ---------------------------------------------------------------------------------------------------
---code here
+-- Number of address lines 
+CREATE FUNCTION fn_NumAddressLines(@PK INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @RET INT = 0
+    IF (
+        SELECT AddressLine1 
+        FROM tblADDRESS
+        WHERE AddressID = @PK
+    ) IS NOT NULL 
+    BEGIN 
+        SET @Ret = @Ret + 1
+    END
+    IF (
+        SELECT AddressLine2 
+        FROM tblADDRESS
+        WHERE AddressID = @PK
+    ) IS NOT NULL 
+    BEGIN 
+        SET @Ret = @Ret + 1
+    END
+	RETURN @RET
+END
+GO
+
+ALTER TABLE tblADDRESS
+ADD NumAddressLines AS (dbo.fn_NumAddressLines(AddressID))
+GO
+
+-- Customer age
+CREATE FUNCTION fn_CustomerAge(@PK INT)
+RETURNS INT
+AS
+BEGIN
+	DECLARE @RET INT = (
+        SELECT FLOOR(DATEDIFF(DAY, CustomerDOB, GETDATE()) / 365.25) 
+        FROM tblCUSTOMER
+        WHERE CustomerID = @PK
+    )
+	RETURN @RET
+END
+GO
+
+ALTER TABLE tblCUSTOMER
+ADD CustomerAge AS (dbo.fn_CustomerAge(CustomerID))
+GO
 
 
 ---------------------------------------------------------------------------------------------------
 -- Complex Queries (Views)
 ---------------------------------------------------------------------------------------------------
---code here
-
+-- Show customers grouped by priority and their total counts
+CREATE OR ALTER VIEW CustomerPriorityCounts AS
+SELECT 
+    (
+        CASE 
+            WHEN PriorityName = '1A - LTCF & Healthcare Personnel'
+            THEN 'Highest Priority'
+            WHEN PriorityName = '1B - 75+ & Frontline Essential Workers'
+            THEN 'High Priority'
+            WHEN PriorityName = '1C - 65-74 & High Risk'
+            THEN 'Medium Priority'
+            WHEN PriorityName = '2 - Older Adults'
+            THEN 'Lower Priority'
+            WHEN PriorityName = '3 - Young Adults & Children'
+            THEN 'Lowest Priority'
+            ELSE 'No Priority'
+        END
+    ) AS PriorityLevel, COUNT(*) AS TotalCount
+FROM tblCUSTOMER
+    JOIN tblPRIORITY ON tblCUSTOMER.PriorityID = tblPRIORITY.PriorityID
+    JOIN tblADDRESS ON tblCUSTOMER.AddressID = tblADDRESS.AddressID
+    JOIN tblCITY ON tblADDRESS.CityID = tblCITY.CityID
+    JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID 
+GROUP BY 
+    (
+        CASE 
+            WHEN PriorityName = '1A - LTCF & Healthcare Personnel'
+            THEN 'Highest Priority'
+            WHEN PriorityName = '1B - 75+ & Frontline Essential Workers'
+            THEN 'High Priority'
+            WHEN PriorityName = '1C - 65-74 & High Risk'
+            THEN 'Medium Priority'
+            WHEN PriorityName = '2 - Older Adults'
+            THEN 'Lower Priority'
+            WHEN PriorityName = '3 - Young Adults & Children'
+            THEN 'Lowest Priority'
+            ELSE 'No Priority'
+        END
+    )
+GO
 
 ---------------------------------------------------------------------------------------------------
 -- Checking Tables

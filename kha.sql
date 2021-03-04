@@ -347,10 +347,15 @@ IF @PriorityID IS NULL
     THROW 58000, 'Priority does not exist', 1
 
 -- Get Customer Type ID
+EXEC GetCustomerTypeID
+@_CustomerTypeName = @CustomerType,
+@_OUT = @CustomerTypeID OUTPUT
+IF @CustomerTypeID IS NULL 
+    THROW 59000, 'Customer type does not exist', 1
 
 BEGIN TRANSACTION
-INSERT INTO tblCUSTOMER (CustomerFname, CustomerLname, CustomerDOB, CustomerEmail, AddressID, PriorityID)
-VALUES (@CustomerFname, @CustomerLname, @CustomerDOB, @CustomerEmail, @AddressID, @PriorityID)
+INSERT INTO tblCUSTOMER (CustomerFname, CustomerLname, CustomerDOB, CustomerEmail, AddressID, PriorityID, CustomerTypeID)
+VALUES (@CustomerFname, @CustomerLname, @CustomerDOB, @CustomerEmail, @AddressID, @PriorityID, @CustomerTypeID)
 
 IF @@ERROR <> 0 
     ROLLBACK
@@ -434,6 +439,12 @@ WHILE @Run <= @NumberOfCustomers
         ORDER BY NEWID()
     )
 
+    DECLARE @RandomCustomerType VARCHAR(50) = (
+        SELECT TOP 1 CustomerTypeName 
+        FROM tblCUSTOMER_TYPE
+        ORDER BY NEWID()
+    )
+
     EXEC CreateNewCustomer
     @CustomerFname = @RandomFirstName,
     @CustomerLname = @RandomLastName,
@@ -445,7 +456,7 @@ WHILE @Run <= @NumberOfCustomers
     @CustomerStateName = @RandomStateName,
     @CustomerEmail = @RandomEmail,
     @Priority = @RandomPriority,
-    @CustomerType = 'Veteran'
+    @CustomerType = @RandomCustomerType
 
     SET @Run = @Run + 1
 
@@ -453,6 +464,7 @@ WHILE @Run <= @NumberOfCustomers
 END
 GO
 
+-- Run populate customers: 
 SELECT * FROM tblCUSTOMER
 SELECT * FROM tblADDRESS
 
@@ -460,7 +472,7 @@ DELETE FROM tblCUSTOMER
 DELETE FROM tblADDRESS
 
 EXEC PopulateCustomers
-@NumberOfCustomers = 1
+@NumberOfCustomers = 10
 GO
 
 -- Business Rules 
@@ -561,3 +573,6 @@ FROM tblCUSTOMER
     JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID 
 WHERE CityName = 'Seattle' AND StateName = 'Washington, WA'
 ORDER BY PriorityID ASC
+
+
+SELECT * FROM tblCUSTOMER_TYPE
