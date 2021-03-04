@@ -345,19 +345,17 @@ SET @SP_ID = (
 GO
 
 -- GET EmployeeTypeID
-CREATE OR ALTER PROCEDURE GetEmployeeID
-    @E_FName VARCHAR(50),
-    @E_LName VARCHAR(50),
-    @E_DOB DATE,
-    @E_ID INT OUTPUT
+CREATE OR ALTER PROCEDURE GetEmployeeTypeID
+    @ET_Name     VARCHAR(50),
+    @ET_ID       INT OUTPUT 
 AS 
-	SET @E_ID = (
-		SELECT EmployeeID
-		FROM tblEMPLOYEE
-		WHERE EmployeeFName = @E_FName
-		AND EmployeeLName = @E_LName
-		AND EmployeeDOB = @E_DOB
-	)
+IF @ET_Name IS NULL
+    THROW 50204, 'EmployeeTypeName is null', 1; 
+SET @ET_ID = (
+    SELECT EmployeeTypeID
+    FROM tblEMPLOYEE_TYPE 
+    WHERE EmployeeTypeName = @ET_Name
+)
 GO
 
 -- GET EmployeeID
