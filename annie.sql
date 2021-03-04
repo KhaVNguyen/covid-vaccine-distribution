@@ -540,7 +540,7 @@ EXEC PopulateOrder
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
-CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
+/*CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
 RETURNS INTEGER
 AS
 BEGIN
@@ -561,10 +561,41 @@ RETURN @RET
 END
 GO
 
+
+ALTER TABLE tblORDER with nocheck
+ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
+CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
+
+DROP FUNCTION fn_OrderDateEarlierThanShippingDate
+
+ALTER TABLE tblORDER  
+DROP CONSTRAINT CK_OrderDateEarlierThanShippingDate;
+GO*/
+
+CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0 
+IF EXISTS (SELECT O.OrderID, O.OrderDate FROM tblORDER O 
+            JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+            JOIN tblPACKAGE PK ON OP.Order_ProductID = PK.Order_ProductID
+            JOIN tblSHIPMENT S ON PK.ShipmentID = S.ShipmentID
+            WHERE S.ShippingDate >= O.OrderDate
+            GROUP BY O.OrderID, O.OrderDate
+        )
+        BEGIN 
+            SET @RET = 1
+        END
+RETURN @RET
+END
+GO
+
 ALTER TABLE tblORDER with nocheck
 ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
 CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
 GO
+
 
 -- 2. Employee with less than 21 years old should not be full-time
 CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder21ForFullTime()
