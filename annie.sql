@@ -381,12 +381,12 @@ BEGIN
             THROW 50290, 'EmployeeID should not be null', 1;
 
         BEGIN TRAN T1
-                INSERT INTO tblORDER(OrderDate, CustomerID, EmployeeID)
-                VALUES (@Ins_OrderDate, @Ins_CustomerID, @Ins_EmployeeID)
-                IF @@ERROR <> 0
+            INSERT INTO tblORDER(OrderDate, CustomerID, EmployeeID)
+            VALUES (@Ins_OrderDate, @Ins_CustomerID, @Ins_EmployeeID)
+        IF @@ERROR <> 0
             ROLLBACK TRAN T1
-                ELSE
-        COMMIT TRAN T1
+        ELSE
+            COMMIT TRAN T1
 END
 GO
 
@@ -422,6 +422,7 @@ IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
      DROP TABLE tblRAW_EmpData
 GO
 
+-- generate tracking num
 CREATE OR ALTER PROCEDURE GenerateTrackingNumber 
 @Output VARCHAR(12) OUTPUT
 AS
@@ -443,12 +444,12 @@ EXEC GenerateTrackingNumber @Output = @TrackingNum OUTPUT
 PRINT (@TrackingNum)
 GO
 
+-- populate data for shipment
 CREATE OR ALTER PROCEDURE PopulateShipment
 @NumsShipment INT
 AS
 DECLARE @Shipment_TrackingNum VARCHAR(12), @Shipment_Date DATETIME, @Shipment_TypeName VARCHAR(50), @Shipment_CarrierName VARCHAR(50)
 DECLARE @ShipmentTypeCount INT = (SELECT COUNT(*) FROM tblSHIPMENT_TYPE)
-DECLARE @CarrierCount INT = (SELECT COUNT(*) FROM tblCARRIER)
 DECLARE @ShipmentType_ID INT, @Carrier_ID INT
 DECLARE @RandShipDays INT, @Number INT
 WHILE @NumsShipment > 0
@@ -491,6 +492,91 @@ EXEC PopulateShipment
 SELECT * FROM tblCARRIER
 
 SELECT * FROM tblSHIPMENT
+
+-- populate Order
+CREATE OR ALTER PROCEDURE PopulateOrder
+@NumsOrder INT
+AS
+-- ORDERDATE AND EMPLOYEE DATA
+DECLARE @OrderDate DATETIME, @Order_EmpFName VARCHAR(50), @Order_EmpLName VARCHAR(50), @Order_EmpBirthy DATE, @Order_EmpTypeName VARCHAR(50)
+--CUSTOMER DATA
+DECLARE @Order_CustFName VARCHAR(50), @Order_CustLName VARCHAR(50), @Order_CustBirthy DATE, @Order_CustEmail VARCHAR(50), @Order_CustTypeName VARCHAR(50)
+DECLARE @Order_Pname VARCHAR(50), @Order_ALine1 VARCHAR(100), @Order_ALine2 VARCHAR(100), @Order_AZip VARCHAR(5), @Order_ACityName VARCHAR(50), @Order_AStateName VARCHAR(50)
+-- COUNTING ROWS
+DECLARE @EmployeeCount INT = (SELECT COUNT(*) FROM tblEMPLOYEE)
+DECLARE @CustomerCount INT = (SELECT COUNT(*) FROM tblCUSTOMER)
+-- CUSTOMER ID AND EMPLOYEE ID 
+DECLARE @EmployeeID INT, @CustomerID INT
+-- RANDOM DAYS
+DECLARE @RandOrderDays INT
+WHILE @NumsOrder > 0
+    BEGIN
+            SET @RandOrderDays = (SELECT RAND() * 100)
+            -- Generate random date 
+            SET @OrderDate = DATEADD(DAY, @RandOrderDays, GETDATE())
+            -- Get random EmployeeID
+            SET @EmployeeID = (SELECT RAND() * @EmployeeCount + 1)
+            SET @Order_EmpFName = (SELECT EmployeeFName FROM tblEMPLOYEE WHERE EmployeeID = @EmployeeID)
+            SET @Order_EmpLName = (SELECT EmployeeLName FROM tblEMPLOYEE WHERE EmployeeID = @EmployeeID)
+            SET @Order_EmpBirthy = (SELECT EmployeeDOB FROM tblEMPLOYEE WHERE EmployeeID = @EmployeeID)
+            SET @Order_EmpTypeName = (SELECT ET.EmployeeTypeName FROM tblEMPLOYEE E JOIN tblEMPLOYEE_TYPE ET
+                                                                                ON E.EmployeeTypeID = ET.EmployeeTypeID
+                                                                                WHERE EmployeeID = @EmployeeID)
+            -- Get random CustomerID
+            SET @CustomerID = (SELECT TOP 1 CustomerID FROM tblCUSTOMER ORDER BY NEWID())
+            SET @Order_CustFName = (SELECT CustomerFname FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
+            SET @Order_CustLName = (SELECT CustomerLname FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
+            SET @Order_CustBirthy = (SELECT CustomerDOB FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
+            SET @Order_CustEmail = (SELECT CustomerEmail FROM tblCUSTOMER WHERE CustomerID = @CustomerID)
+            SET @Order_CustTypeName = (SELECT CT.CustomerTypeName FROM tblCUSTOMER C JOIN tblCUSTOMER_TYPE CT
+                                                                                ON C.CustomerTypeID = CT.CustomerTypeID 
+                                                                                WHERE CustomerID = @CustomerID)
+            SET @Order_Pname = (SELECT P.PriorityName FROM tblCUSTOMER C JOIN tblPRIORITY P 
+                                                                        ON C.PriorityID = P.PriorityID 
+                                                                        WHERE CustomerID = @CustomerID)
+            SET @Order_ALine1 = (SELECT A.AddressLine1 FROM tblCUSTOMER C JOIN tblADDRESS A
+                                                                        ON C.AddressID = A.AddressID
+                                                                        WHERE CustomerID = @CustomerID)
+            SET @Order_ALine2 = (SELECT A.AddressLine2 FROM tblCUSTOMER C JOIN tblADDRESS A
+                                                                        ON C.AddressID = A.AddressID
+                                                                         WHERE CustomerID = @CustomerID)  
+            SET @Order_AZip = (SELECT A.Zip FROM tblCUSTOMER C JOIN tblADDRESS A
+                                                                        ON C.AddressID = A.AddressID
+                                                                         WHERE CustomerID = @CustomerID)  
+            SET @Order_ACityName = (SELECT CI.CityName FROM tblCUSTOMER C JOIN tblADDRESS A
+                                                                        ON C.AddressID = A.AddressID
+                                                                        JOIN tblCITY CI
+                                                                        ON A.CityID = CI.CityID
+                                                                        WHERE CustomerID = @CustomerID)
+            SET @Order_AStateName = (SELECT S.StateName FROM tblCUSTOMER C JOIN tblADDRESS A
+                                                                        ON C.AddressID = A.AddressID
+                                                                        JOIN tblCITY CI
+                                                                        ON A.CityID = CI.CityID
+                                                                        JOIN tblSTATE S 
+                                                                        ON CI.StateID = S.StateID
+                                                                        WHERE CustomerID = @CustomerID)
+
+            EXEC Ins_Order
+            @Ins_OrderDate = @OrderDate,
+            @Ins_OrderEmpFName = @Order_EmpFName,
+            @Ins_OrderEmpLName = @Order_EmpLName,
+            @Ins_OrderEmpDOB = @Order_EmpBirthy,
+            @Ins_OrderEmpTypeName = @Order_EmpTypeName,
+            @Ins_OrderCustFname = @Order_CustFName,
+            @Ins_OrderCustLname = @Order_CustLName,
+            @Ins_OrderCustDOB = @Order_CustBirthy,
+            @Ins_OrderCustEmail = @Order_CustEmail,
+            @Ins_OrderCustTypeName = @Order_CustTypeName,
+            @Ins_OrderPname = @Order_Pname,
+            @Ins_OrderALine1 = @Order_ALine1,
+            @Ins_OrderALine2 = @Order_ALine2,
+            @Ins_OrderAZip = @Order_AZip,
+            @Ins_OrderACityName = @Order_ACityName,
+            @Ins_OrderAStateName = @Order_AStateName
+
+        SET @NumsOrder = @NumsOrder - 1
+    END
+GO
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
