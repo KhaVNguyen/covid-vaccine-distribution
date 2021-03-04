@@ -582,6 +582,49 @@ EXEC GetCarrierID
     END 
 GO
 
+-- Insert Package 
+CREATE OR ALTER PROCEDURE Ins_Package 
+@ProductName VARCHAR(50),
+@OrderID INTEGER,
+@Quantity INTEGER,
+@ShipmentTrackingNum VARCHAR(50),
+@ShipmentShippingDate DATETIME,
+@ShipmentCarrierName VARCHAR(50),
+@ShipmentTypeName VARCHAR(50)
+AS
+BEGIN
+    DECLARE @ProductID INT = (SELECT ProductID FROM tblPRODUCT WHERE ProductName = @ProductName)
+
+    DECLARE @OrderProductID INT = (
+        SELECT Order_ProductID 
+        FROM tblORDER_PRODUCT
+        WHERE ProductID = @ProductID 
+            AND OrderID = @OrderID
+        AND Quantity = @Quantity
+    )
+
+    DECLARE @ShipmentID INT
+
+    EXEC GetShipmentID
+    @SP_TrackingNum = @ShipmentTrackingNum,
+    @SP_Date = @ShipmentShippingDate, 
+    @SP_ShipmentTypeName = @ShipmentTypeName,
+    @SP_CarrierName = @ShipmentCarrierName,
+    @SP_ID = @ShipmentID OUTPUT
+
+    IF @ShipmentID IS NULL
+        THROW 60000, 'Shipment does not exist', 1
+
+    BEGIN TRANSACTION 
+    INSERT INTO tblPACKAGE(Order_ProductID, ShipmentID)
+    VALUES (@OrderProductID, @ShipmentID)
+    IF @@ERROR <> 0 
+        ROLLBACK
+    ELSE 
+        COMMIT
+END
+GO
+
 
 -- Insert Employee
 CREATE OR ALTER PROCEDURE Ins_Employee
@@ -667,6 +710,85 @@ AS
 			THROW 54003, 'Something went wrong', 1;
 		END
 	COMMIT TRAN T1
+GO
+
+-- Populate Packages
+CREATE OR ALTER PROCEDURE PopulatePackages 
+@NumPackages INT
+AS 
+BEGIN
+    DECLARE @Run INT = 1
+    WHILE @Run <= @NumPackages
+        BEGIN
+            DECLARE @RandomOrderProductID VARCHAR(100) = (
+                SELECT TOP 1 Order_ProductID 
+                FROM tblORDER_PRODUCT
+                ORDER BY NEWID()
+            ) 
+
+            DECLARE @RandomProductName VARCHAR(50) = (
+                SELECT ProductName
+                FROM tblORDER_PRODUCT
+                JOIN tblPRODUCT ON tblORDER_PRODUCT.ProductID = tblPRODUCT.ProductID
+                WHERE Order_ProductID = @RandomOrderProductID
+            )
+
+            DECLARE @RandomOrderID VARCHAR(50) = (
+                SELECT OrderID
+                FROM tblORDER_PRODUCT
+                WHERE Order_ProductID = @RandomOrderProductID
+            )
+
+            DECLARE  @RandomQuantity INT = (
+                SELECT Quantity
+                FROM tblORDER_PRODUCT
+                WHERE Order_ProductID = @RandomOrderProductID
+            )
+
+            DECLARE @RandomShipmentID INT = (
+                SELECT TOP 1 ShipmentID 
+                FROM tblSHIPMENT
+                ORDER BY NEWID()
+            )
+
+            DECLARE @RandomShipmentTrackingNum VARCHAR(50) = (
+                SELECT TrackingNumber
+                FROM tblSHIPMENT 
+                WHERE ShipmentID = @RandomShipmentID
+            )
+
+            DECLARE @RandomShipmentDate DATETIME = (
+                SELECT ShippingDate
+                FROM tblSHIPMENT 
+                WHERE ShipmentID = @RandomShipmentID
+            )
+
+            DECLARE @RandomShipmentCarrierName VARCHAR(50) = (
+                SELECT CarrierName
+                FROM tblSHIPMENT 
+                JOIN tblCARRIER ON tblSHIPMENT.CarrierID = tblCARRIER.CarrierID
+                WHERE ShipmentID = @RandomShipmentID
+            )
+
+            DECLARE @RandomShipmentTypeName VARCHAR(50) = (
+                SELECT ShipmentTypeName
+                FROM tblSHIPMENT 
+                JOIN tblSHIPMENT_TYPE ON tblSHIPMENT.ShipmentTypeID = tblSHIPMENT_TYPE.ShipmentTypeID
+                WHERE ShipmentID = @RandomShipmentID
+            )
+
+            EXEC Ins_Package
+            @ProductName = @RandomProductName,
+            @OrderID = @RandomOrderID,
+            @Quantity = @RandomQuantity,
+            @ShipmentTrackingNum = @RandomShipmentTrackingNum,
+            @ShipmentShippingDate = @RandomShipmentDate,
+            @ShipmentCarrierName = @RandomShipmentCarrierName,
+            @ShipmentTypeName = @RandomShipmentTypeName
+
+            SET @Run = @Run + 1
+        END
+END
 GO
 
 ---------------------------------------------------------------------------------------------------
@@ -1077,8 +1199,10 @@ EXEC PopulateShipment
 EXEC PopulateOrder
 @NumsOrder = 5
 
-GO
+EXEC PopulatePackages
+@NumPackages = 5
 
+GO
 
 ---------------------------------------------------------------------------------------------------
 -- Business Rules
