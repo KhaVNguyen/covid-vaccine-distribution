@@ -243,11 +243,11 @@ DECLARE @CityID INT, @StateID INT
 
 EXEC GetCityID
 @C_Name = @A_CityName,
-@C_ID = @CityID
+@C_ID = @CityID OUTPUT 
 
 EXEC GetStateID
 @S_Name = @A_StateName,
-@S_ID = @StateID
+@S_ID = @StateID OUTPUT
 
 SET @A_ID = (
     SELECT AddressID
@@ -358,7 +358,7 @@ AS
 SET @E_ID = (
     SELECT EmployeeID
     FROM tblEMPLOYEE
-    WHERE EmployeeFName = @E_LName
+    WHERE EmployeeFName = @E_FName
         AND EmployeeLName = @E_LName
         AND EmployeeDOB = @E_DOB
 )
@@ -739,7 +739,7 @@ BEGIN
                 WHERE Order_ProductID = @RandomOrderProductID
             )
 
-            DECLARE  @RandomQuantity INT = (
+            DECLARE @RandomQuantity INT = (
                 SELECT Quantity
                 FROM tblORDER_PRODUCT
                 WHERE Order_ProductID = @RandomOrderProductID
@@ -962,7 +962,6 @@ WHILE @Run <= @NumberOfCustomers
         ORDER BY NEWID()
     )
 
-    
     DECLARE @RandomStreetSuffix VARCHAR(25) = (
         SELECT TOP 1 StreetSuffix 
         FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] 
@@ -1191,7 +1190,7 @@ EXEC PopulateAddresses
 @NumberOfAddresses = 1000
 
 EXEC PopulateCustomers
-@NumberOfCustomers = 1000
+@NumberOfCustomers = 10000
 
 EXEC PopulateShipment
 @NumsShipment = 5
