@@ -641,9 +641,7 @@ DECLARE @EmployeeTypeID INT
     @ET_ID = @EmployeeTypeID OUTPUT
 
     IF @EmployeeTypeID IS NULL
-    BEGIN
         THROW 50209, '@EmployeeTypeID is not found', 1;
-    END
     
     BEGIN TRANSACTION T1
         INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
@@ -1196,7 +1194,7 @@ EXEC PopulateShipment
 @NumsShipment = 5
 
 EXEC PopulateOrder
-@NumsOrder = 5
+@NumsOrder = 1000
 
 EXEC PopulatePackages
 @NumPackages = 5
@@ -1410,7 +1408,7 @@ SELECT * FROM tblDETAIL
 
 -- tables with FK
 SELECT * FROM tblCARRIER
-SELECT * FROM tblPACKAGE -- not done yet
+SELECT * FROM tblPACKAGE
 SELECT * FROM tblORDER
 SELECT * FROM tblORDER_PRODUCT
 SELECT * FROM tblPRODUCT
