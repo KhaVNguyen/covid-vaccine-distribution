@@ -1382,10 +1382,11 @@ GROUP BY
     )
 GO
 
-CREATE OR ALTER VIEW TotalNonHighPriorityHouseholds AS
-SELECT COUNT(*) AS TotalNumNonHighPriorityHouseholds
+CREATE OR ALTER VIEW NumNonPriorityHouseholdsRanking AS
+SELECT RANK() OVER(ORDER BY COUNT(*) DESC) AS Rank, tblSTATE.StateName AS State, COUNT(*) AS Count
 FROM tblADDRESS
     JOIN tblCUSTOMER ON tblADDRESS.AddressID = tblCUSTOMER.AddressID
+    JOIN tblSTATE ON tblADDRESS.StateID = tblSTATE.StateID
 WHERE tblCustomer.CustomerID NOT IN  
     (
         SELECT CustomerID 
@@ -1393,6 +1394,7 @@ WHERE tblCustomer.CustomerID NOT IN
             JOIN tblPRIORITY ON tblCUSTOMER.PriorityID = tblPRIORITY.PriorityID
         WHERE PriorityName = '1A - LTCF & Healthcare Personnel' OR PriorityName = '1C - 65-74 & High Risk'
     )
+GROUP BY tblADDRESS.StateID, tblSTATE.StateName
 GO
 
 ---------------------------------------------------------------------------------------------------
