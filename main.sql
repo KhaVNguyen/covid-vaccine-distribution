@@ -1220,7 +1220,9 @@ DECLARE @RET INTEGER = 0
 		WHERE tblADDRESS.StateID <> tblCITY.StateID
 	)
 	BEGIN
-		SET @RET = 1
+		SET @RET = 1;
+        THROW 60000, 'The city in all addresses must be associated with the correct state', 1
+
 	END
 RETURN @RET
 END
@@ -1232,7 +1234,7 @@ CHECK (dbo.fn_AddressCityMustBeInState() = 0)
 GO
 
 -- Only 50 states can exist
-CREATE FUNCTION fn_50StatesMax()
+CREATE FUNCTION fn_50StatesMaxAndNoDupes()
 RETURNS INTEGER
 AS
 BEGIN
@@ -1242,6 +1244,13 @@ DECLARE @RET INTEGER = 0
 		SELECT COUNT(*)
 		FROM tblSTATE
 	) > 50
+    OR 
+    (
+        SELECT COUNT(*)
+        FROM tblSTATE
+        GROUP BY StateName
+        HAVING COUNT(*) > 1
+    ) > 0
 	BEGIN
 		SET @RET = 1
 	END
@@ -1303,6 +1312,31 @@ GO
 
 ALTER TABLE tblCUSTOMER
 ADD CustomerAge AS (dbo.fn_CustomerAge(CustomerID))
+GO
+
+
+-- Number of Residents in an Address Household
+CREATE FUNCTION fn_NumberInHouseholdWithHighPriority(@PK INT)
+RETURNS INT 
+AS 
+BEGIN
+    DECLARE @RET INT = (
+        SELECT COUNT(*)
+        FROM tblADDRESS
+            JOIN tblCUSTOMER ON tblADDRESS.AddressID = tblCUSTOMER.AddressID
+            JOIN tblPRIORITY ON tblCUSTOMER.PriorityID = tblPRIORITY.PriorityID
+        WHERE tblAddress.AddressID = @PK
+        AND (
+            PriorityName = '1A - LTCF & Healthcare Personnel'
+            OR PriorityName = '1B - 75+ & Frontline Essential Workers'
+        )
+    )
+	RETURN @RET
+END
+GO
+
+ALTER TABLE tblADDRESS
+ADD NumberHighPriorityPeople AS (dbo.fn_NumberInHouseholdWithHighPriority(AddressID))
 GO
 
 
