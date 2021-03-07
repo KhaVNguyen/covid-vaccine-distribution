@@ -1411,6 +1411,23 @@ ALTER TABLE tblSTATE
 ADD TototalOrder AS (dbo.FN_TotalOrderStates (StateID)) 
 GO
 
+--  Total order of each product
+CREATE OR ALTER FUNCTION FN_TotalOrderEachProduct(@PK INT)
+RETURNS INT
+AS
+BEGIN 
+    DECLARE @RET INT = (SELECT COUNT(OP.OrderID)
+                        FROM tblORDER_PRODUCT OP
+                        JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
+                        WHERE P.ProductID = @PK)
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblORDER_PRODUCT
+ADD TotalOrderProduct AS (dbo.FN_TotalOrderEachProduct (ProductID)) 
+GO
+
 ---------------------------------------------------------------------------------------------------
 -- Complex Queries (Views)
 ---------------------------------------------------------------------------------------------------
