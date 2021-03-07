@@ -695,6 +695,16 @@ GO
 
 SELECT * FROM vwTop10OrderbyStates
 
+-- most popular product by order nums 
+CREATE VIEW vwPopularProduct
+SELECT O.OrderID, P.ProductName,SUM(OP.Quantity) AS TotalOrderProduct
+FROM tblORDER O
+    JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+    JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
+    GROUP BY O.OrderID, P.ProductName
+    ORDER BY SUM(OP.Quantity) DESC
+GO
+
 
 
 
