@@ -1261,7 +1261,7 @@ ADD CONSTRAINT CK_50StatesMax
 CHECK (dbo.fn_50StatesMax() = 0)
 GO
 
--- 1. Order date should be earlier than shipping date
+-- Order date should be earlier than shipping date
 CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
 RETURNS INTEGER
 AS
@@ -1286,7 +1286,7 @@ ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
 CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
 GO
 
--- 2. Employee with less than 21 years old should not be full-time
+-- Employee with less than 21 years old should not be full-time
 CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder21ForFullTime()
 RETURNS INTEGER
 AS
