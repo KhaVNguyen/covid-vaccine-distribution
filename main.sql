@@ -1487,6 +1487,24 @@ WHERE tblCustomer.CustomerID NOT IN
 GROUP BY tblADDRESS.StateID, tblSTATE.StateName
 GO
 
+-- Ranking 1 - 50 orders by states and nums of customer 
+CREATE VIEW vwTop10OrderbyStates
+AS
+SELECT S.StateID, S.StateName, COUNT(O.CustomerID) AS TotalNumsCustomers ,SUM(OP.Quantity) AS TotalProductOrders,
+RANK() OVER (ORDER BY SUM(OP.Quantity) DESC) AS RANK
+FROM tblSTATE S 
+    JOIN tblCITY C ON S.StateID = C.StateID
+    JOIN tblADDRESS A ON C.CityID = A.CityID
+    JOIN tblCUSTOMER CS ON A.AddressID = CS.AddressID
+    JOIN tblORDER O ON CS.CustomerID = O.CustomerID
+    JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+    GROUP BY S.StateID, S.StateName
+GO
+
+SELECT * FROM vwTop10OrderbyStates
+
+
+
 ---------------------------------------------------------------------------------------------------
 -- Checking Tables
 ---------------------------------------------------------------------------------------------------
