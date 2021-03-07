@@ -1261,6 +1261,56 @@ ADD CONSTRAINT CK_50StatesMax
 CHECK (dbo.fn_50StatesMax() = 0)
 GO
 
+-- 1. Order date should be earlier than shipping date
+CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0 
+IF EXISTS (SELECT O.OrderID, O.OrderDate, S.ShippingDate FROM tblORDER O 
+            JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+            JOIN tblPACKAGE PK ON OP.Order_ProductID = PK.Order_ProductID
+            JOIN tblSHIPMENT S ON PK.ShipmentID = S.ShipmentID
+            WHERE S.ShippingDate < O.OrderDate
+            GROUP BY O.OrderID, O.OrderDate, S.ShippingDate
+        )
+        BEGIN 
+            SET @RET = 1
+        END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblORDER with nocheck
+ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
+CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
+GO
+
+-- 2. Employee with less than 21 years old should not be full-time
+CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder21ForFullTime()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0 
+IF EXISTS (SELECT EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, CAST(DATEDIFF(day, EmployeeDOB, GETDATE()) / 365.25 AS INT) AS Age, E.EmployeeTypeID  
+            FROM tblEMPLOYEE E
+            JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
+            WHERE CAST(DATEDIFF(day, EmployeeDOB, GETDATE()) / 365.25 AS INT) < 21
+            AND ET.EmployeeTypeName = 'Full-Time'
+            GROUP BY EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, E.EmployeeTypeID
+        )
+        BEGIN 
+            SET @RET = 1
+        END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblEMPLOYEE with nocheck
+ADD CONSTRAINT CK_EmployeeMustBeOlder21ForFullTime
+CHECK (dbo.fn_EmployeeMustBeOlder21ForFullTime() = 0)
+GO
+
 ---------------------------------------------------------------------------------------------------
 -- Computed Columns
 ---------------------------------------------------------------------------------------------------

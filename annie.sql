@@ -245,7 +245,7 @@ SELECT * FROM tblCARRIER
 -- Shipment Type Data 
 INSERT INTO tblSHIPMENT_TYPE(ShipmentTypeName, ShipmentTypeDesc)
 VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Estimated 1-3 days'), ('Parcel', 'Estimated 2-8 days'), ('First Class', 'Estimated 1–3 days up to 13 oz')
-
+GO
 
 -------------------------- Insert Sproc --------------------------------------
 
@@ -469,10 +469,8 @@ GO
 -- Test 
 EXEC PopulateShipment
 @NumsShipment = 5
+GO
 
-SELECT * FROM tblCARRIER
-
-SELECT * FROM tblSHIPMENT
 
 -- populate order and order product
 CREATE OR ALTER PROCEDURE PopulateOrder
@@ -537,6 +535,7 @@ GO
 
 EXEC PopulateOrder
 @NumsOrder = 5
+GO
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
