@@ -1387,6 +1387,29 @@ ALTER TABLE tblADDRESS
 ADD NumberHighPriorityPeople AS (dbo.fn_NumberInHouseholdWithHighPriority(AddressID))
 GO
 
+--  Total order in each state in the U.S.
+
+CREATE OR ALTER FUNCTION FN_TotalOrderStates(@PK INT) 
+RETURNS INT
+AS
+BEGIN
+
+DECLARE @RET INT = (SELECT COUNT(O.OrderID)
+                    FROM tblORDER O
+                        JOIN tblCUSTOMER CS ON O.CustomerID = CS.CustomerID
+                        JOIN tblADDRESS A ON CS.AddressID = A.AddressID
+                        JOIN tblCITY C ON A.CityID = C.CityID
+                        JOIN tblSTATE S ON C.StateID = S.StateID
+                        WHERE S.StateID = @PK
+                    )
+
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblSTATE
+ADD TototalOrder AS (dbo.FN_TotalOrderStates (StateID)) 
+GO
 
 ---------------------------------------------------------------------------------------------------
 -- Complex Queries (Views)
