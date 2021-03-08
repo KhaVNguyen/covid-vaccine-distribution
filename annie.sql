@@ -245,7 +245,7 @@ SELECT * FROM tblCARRIER
 -- Shipment Type Data 
 INSERT INTO tblSHIPMENT_TYPE(ShipmentTypeName, ShipmentTypeDesc)
 VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Estimated 1-3 days'), ('Parcel', 'Estimated 2-8 days'), ('First Class', 'Estimated 1–3 days up to 13 oz')
-
+GO
 
 -------------------------- Insert Sproc --------------------------------------
 
@@ -469,10 +469,8 @@ GO
 -- Test 
 EXEC PopulateShipment
 @NumsShipment = 5
+GO
 
-SELECT * FROM tblCARRIER
-
-SELECT * FROM tblSHIPMENT
 
 -- populate order and order product
 CREATE OR ALTER PROCEDURE PopulateOrder
@@ -537,6 +535,7 @@ GO
 
 EXEC PopulateOrder
 @NumsOrder = 5
+GO
 
 -------------------------- Business Rules  --------------------------------------
 -- 1. Order date should be earlier than shipping date
@@ -577,12 +576,12 @@ RETURNS INTEGER
 AS
 BEGIN
 DECLARE @RET INTEGER = 0 
-IF EXISTS (SELECT O.OrderID, O.OrderDate FROM tblORDER O 
+IF EXISTS (SELECT O.OrderID, O.OrderDate, S.ShippingDate FROM tblORDER O 
             JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
             JOIN tblPACKAGE PK ON OP.Order_ProductID = PK.Order_ProductID
             JOIN tblSHIPMENT S ON PK.ShipmentID = S.ShipmentID
-            WHERE S.ShippingDate >= O.OrderDate
-            GROUP BY O.OrderID, O.OrderDate
+            WHERE S.ShippingDate < O.OrderDate
+            GROUP BY O.OrderID, O.OrderDate, S.ShippingDate
         )
         BEGIN 
             SET @RET = 1
@@ -597,16 +596,17 @@ CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
 GO
 
 
+
 -- 2. Employee with less than 21 years old should not be full-time
 CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder21ForFullTime()
 RETURNS INTEGER
 AS
 BEGIN
 DECLARE @RET INTEGER = 0 
-IF EXISTS (SELECT EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, CAST(DATEDIFF(day, GETDATE(), EmployeeDOB) / 365.25 AS INT) AS Age, E.EmployeeTypeID  
+IF EXISTS (SELECT EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, CAST(DATEDIFF(day, EmployeeDOB, GETDATE()) / 365.25 AS INT) AS Age, E.EmployeeTypeID  
             FROM tblEMPLOYEE E
             JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
-            WHERE CAST(DATEDIFF(day, GETDATE(), EmployeeDOB) / 365.25 AS INT) < 21
+            WHERE CAST(DATEDIFF(day, EmployeeDOB, GETDATE()) / 365.25 AS INT) < 21
             AND ET.EmployeeTypeName = 'Full-Time'
             GROUP BY EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, E.EmployeeTypeID
         )
@@ -622,11 +622,18 @@ ADD CONSTRAINT CK_EmployeeMustBeOlder21ForFullTime
 CHECK (dbo.fn_EmployeeMustBeOlder21ForFullTime() = 0)
 GO
 
+
+/*ALTER TABLE tblEMPLOYEE  
+DROP CONSTRAINT CK_EmployeeMustBeOlder21ForFullTime;
+
+
+DROP FUNCTION fn_EmployeeMustBeOlder21ForFullTime*/
+
 -------------------------- Computed Columns --------------------------------------
 
 -- 1. Total order in each state in the U.S.
 
-CREATE FUNCTION FN_TotalOrderStates(@PK INT) 
+CREATE OR ALTER FUNCTION FN_TotalOrderStates(@PK INT) 
 RETURNS INT
 AS
 BEGIN
@@ -649,7 +656,7 @@ ADD TototalOrder AS (dbo.FN_TotalOrderStates (StateID))
 GO
 
 -- 2. Total order of each product
-CREATE FUNCTION FN_TotalOrderEachProduct(@PK INT)
+CREATE OR ALTER FUNCTION FN_TotalOrderEachProduct(@PK INT)
 RETURNS INT
 AS
 BEGIN 
@@ -661,9 +668,50 @@ RETURN @RET
 END
 GO
 
-ALTER TABLE tblORDER
+ALTER TABLE tblORDER_PRODUCT
 ADD TotalOrderProduct AS (dbo.FN_TotalOrderEachProduct (ProductID)) 
 GO
+
+SELECT * FROM tblORDER_PRODUCT
+SELECT COUNT(OP.OrderID)
+                        FROM tblORDER_PRODUCT OP
+                        JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
+                        WHERE P.ProductID = '27'
+
+-------------------------- Views --------------------------------------
+-- Ranking 1 - 50 orders by states and nums of customer 
+CREATE VIEW vwTop10OrderbyStates
+AS
+SELECT S.StateID, S.StateName, COUNT(O.CustomerID) AS TotalNumsCustomers ,SUM(OP.Quantity) AS TotalProductOrders,
+RANK() OVER (ORDER BY SUM(OP.Quantity) DESC) AS RANK
+FROM tblSTATE S 
+    JOIN tblCITY C ON S.StateID = C.StateID
+    JOIN tblADDRESS A ON C.CityID = A.CityID
+    JOIN tblCUSTOMER CS ON A.AddressID = CS.AddressID
+    JOIN tblORDER O ON CS.CustomerID = O.CustomerID
+    JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+    GROUP BY S.StateID, S.StateName
+GO
+
+SELECT * FROM vwTop10OrderbyStates
+
+-- most popular product by order nums 
+CREATE VIEW vwPopularProduct
+SELECT O.OrderID, P.ProductName,SUM(OP.Quantity) AS TotalOrderProduct
+FROM tblORDER O
+    JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+    JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
+    GROUP BY O.OrderID, P.ProductName
+    ORDER BY SUM(OP.Quantity) DESC
+GO
+
+
+
+
+
+
+
+
 
 ------------------------Code from Tom--------------------------------------
 -- New GetCustomerID
@@ -739,4 +787,3 @@ AS
 GO
 */
 
-select * from tbl

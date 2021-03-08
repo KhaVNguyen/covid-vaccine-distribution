@@ -243,7 +243,7 @@ DECLARE @CityID INT, @StateID INT
 
 EXEC GetCityID
 @C_Name = @A_CityName,
-@C_ID = @CityID OUTPUT 
+@C_ID = @CityID OUTPUT
 
 EXEC GetStateID
 @S_Name = @A_StateName,
@@ -339,11 +339,11 @@ GO
 -- GET EmployeeTypeID
 CREATE OR ALTER PROCEDURE GetEmployeeTypeID
     @ET_Name     VARCHAR(50),
-    @ET_ID       INT OUTPUT 
-AS 
+    @ET_ID       INT OUTPUT
+AS
 SET @ET_ID = (
     SELECT EmployeeTypeID
-    FROM tblEMPLOYEE_TYPE 
+    FROM tblEMPLOYEE_TYPE
     WHERE EmployeeTypeName = @ET_Name
 )
 GO
@@ -375,12 +375,12 @@ CREATE OR ALTER PROCEDURE GetOrderID
     @OR_CustDOB         DATE,
     @OR_ID              INT OUTPUT
 AS
-IF  @OR_Date IS NULL OR 
-    @OR_EmpFName IS NULL OR 
-    @OR_EmpLName IS NULL OR 
-    @OR_EmpDOB IS NULL OR 
-    @OR_CustFname IS NULL OR 
-    @OR_CustLname IS NULL OR 
+IF  @OR_Date IS NULL OR
+    @OR_EmpFName IS NULL OR
+    @OR_EmpLName IS NULL OR
+    @OR_EmpDOB IS NULL OR
+    @OR_CustFname IS NULL OR
+    @OR_CustLname IS NULL OR
     @OR_CustDOB IS NULL
 
 DECLARE @EmployeeID INT, @CustomerID INT
@@ -391,7 +391,7 @@ EXEC GetEmployeeID
 @E_DOB = @OR_EmpDOB,
 @E_ID = @EmployeeID OUTPUT
 
--- combined from Kha 
+-- combined from Kha
 EXEC GetCustomerID
 @C_Fname = @OR_CustFname,
 @C_Lname = @OR_CustLname,
@@ -422,10 +422,10 @@ SELECT CustomerFname, CustomerLname, DateOfBirth
 FROM PEEPS.dbo.tblCUSTOMER
 
 -- EMPLOYEE TYPE DATA
-INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc) 
+INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc)
 VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
 
--- Shipment Type Data 
+-- Shipment Type Data
 INSERT INTO tblSHIPMENT_TYPE(ShipmentTypeName, ShipmentTypeDesc)
 VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Estimated 1-3 days'), ('Parcel', 'Estimated 2-8 days'), ('First Class', 'Estimated 1–3 days up to 13 oz')
 
@@ -434,11 +434,34 @@ INSERT INTO tblCARRIER(CarrierName)
 VALUES('UPS'),('USPS'),('DHL'),('FedEx')
 GO
 
+-- The data below is taken from https://en.wikipedia.org/wiki/COVID-19_vaccine
+IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
+	INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc) VALUES
+	('Pfizer�BioNTech', 'The best vaccine right now, collaborate effort from United States and Germany.'),
+	('Gamaleya Research Institute', 'The first ever vaccine from Russia.'),
+	('Oxford�AstraZeneca', 'Also a good vaccine from United Kingdom.'),
+	('Sinopharm', 'Kinda shady vaccine from China.'),
+	('Sinovac', 'Also kinda shady vaccine from China.'),
+	('Moderna', 'On par with Pfizer, and made from United States.'),
+	('Johnson & Johnson', 'This is the new one from United States and Netherlands.')
+
+IF NOT EXISTS (SELECT TOP 1 * FROM tblDETAIL)
+	INSERT INTO tblDETAIL (DetailName, DetailDesc) VALUES
+	('Minimum Temperature', 'Minimum temperature in celsius that the product can withstand.'),
+	('Maximum Temperature', 'Maximum temperature in celsius that the product can withstand'),
+	('Recommended Temperature', 'Recommended temperature in celsius for storing the product'),
+	('Weight', 'Weight in grams for a single product unit.')
+
+IF NOT EXISTS (SELECT TOP 1 * FROM tblCUSTOMER_TYPE)
+	INSERT INTO tblCUSTOMER_TYPE (CustomerTypeName) VALUES
+	('Hospital'), ('Clinic'), ('Household'), ('Individual'), ('Federal Institution'),
+	('State Institution'), ('Research Institution'), ('University'), ('School')
+GO
 ---------------------------------------------------------------------------------------------------
 -- Insert Stored Procedure
 ---------------------------------------------------------------------------------------------------
 -- Insert address
-CREATE OR ALTER PROCEDURE 
+CREATE OR ALTER PROCEDURE
 CreateNewAddress
 @AddressLine1 VARCHAR(100),
 @AddressLine2 VARCHAR(100),
@@ -450,13 +473,13 @@ BEGIN
 
 DECLARE @CityID INT, @StateID INT
 
-EXEC GetCityID 
+EXEC GetCityID
 @C_Name = @CityName,
 @C_ID = @CityID OUTPUT
-IF @CityID IS NULL 
+IF @CityID IS NULL
     THROW 55000, 'City does not exist', 1
 
-EXEC GetStateID 
+EXEC GetStateID
 @S_Name = @StateName,
 @S_ID = @StateID OUTPUT
 IF @StateID IS NULL
@@ -468,15 +491,15 @@ IF (SELECT StateID FROM tblCITY WHERE CityID = @CityID) <> @StateID
 BEGIN TRANSACTION
 INSERT INTO tblADDRESS(AddressLine1, AddressLine2, Zip, CityID, StateID)
 VALUES (@AddressLine1, @AddressLine2, @Zip, @CityID, @StateID)
-IF @@ERROR <> 0 
+IF @@ERROR <> 0
     ROLLBACK
-ELSE 
+ELSE
     COMMIT
-END 
+END
 GO
 
 -- Insert customer
-CREATE OR ALTER PROCEDURE 
+CREATE OR ALTER PROCEDURE
 CreateNewCustomer
 @CustomerFname VARCHAR(50),
 @CustomerLname VARCHAR(50),
@@ -494,7 +517,7 @@ BEGIN
 
 DECLARE @AddressID INT, @PriorityID INT, @CustomerTypeID INT
 
-EXEC GetAddressID 
+EXEC GetAddressID
 @A_Line1 = @CustomerAddressLine1,
 @A_Line2 = @CustomerAddressLine2,
 @A_Zip = @CustomerZip,
@@ -502,17 +525,17 @@ EXEC GetAddressID
 @A_StateName = @CustomerStateName,
 @A_ID = @AddressID OUTPUT
 
-IF @AddressID IS NULL 
+IF @AddressID IS NULL
     BEGIN
         EXEC CreateNewAddress
         @AddressLine1 = @CustomerAddressLine1,
         @Addressline2 = @CustomerAddressLine2,
         @Zip = @CustomerZip,
-        @CityName = @CustomerCityName, 
+        @CityName = @CustomerCityName,
         @StateName = @CustomerStateName
     END
 
-EXEC GetAddressID 
+EXEC GetAddressID
 @A_Line1 = @CustomerAddressLine1,
 @A_Line2 = @CustomerAddressLine2,
 @A_Zip = @CustomerZip,
@@ -523,34 +546,34 @@ EXEC GetAddressID
 EXEC GetPriorityID
 @P_Name = @Priority,
 @P_ID = @PriorityID OUTPUT
-IF @PriorityID IS NULL 
+IF @PriorityID IS NULL
     THROW 58000, 'Priority does not exist', 1
 
 -- Get Customer Type ID
 EXEC GetCustomerTypeID
 @_CustomerTypeName = @CustomerType,
 @_OUT = @CustomerTypeID OUTPUT
-IF @CustomerTypeID IS NULL 
+IF @CustomerTypeID IS NULL
     THROW 59000, 'Customer type does not exist', 1
 
 BEGIN TRANSACTION
 INSERT INTO tblCUSTOMER (CustomerFname, CustomerLname, CustomerDOB, CustomerEmail, AddressID, PriorityID, CustomerTypeID)
 VALUES (@CustomerFname, @CustomerLname, @CustomerDOB, @CustomerEmail, @AddressID, @PriorityID, @CustomerTypeID)
 
-IF @@ERROR <> 0 
+IF @@ERROR <> 0
     ROLLBACK
-ELSE 
+ELSE
     COMMIT
-END 
+END
 GO
 
--- Insert shipment 
+-- Insert shipment
 CREATE OR ALTER PROCEDURE Ins_Shipment
     @InsSP_TrackingNum         VARCHAR(50),
     @InsSP_Date                DATETIME,
     @InsSP_ShipmentTypeName    VARCHAR(50),
     @InsSP_CarrierName         VARCHAR(50)
-AS 
+AS
 BEGIN
 DECLARE @ShipmentTypeID INT, @CarrierID INT
 
@@ -566,8 +589,8 @@ EXEC GetShipmentTypeID
 EXEC GetCarrierID
 @CR_Name = @InsSP_CarrierName,
 @CR_ID = @CarrierID OUTPUT
-    
-    IF @CarrierID IS NULL 
+
+    IF @CarrierID IS NULL
     BEGIN
         THROW 50300, '@CarrierID is not found', 1;
     END
@@ -575,16 +598,15 @@ EXEC GetCarrierID
     BEGIN TRANSACTION T1
         INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
         VALUES (@InsSP_TrackingNum, @InsSP_Date, @ShipmentTypeID, @CarrierID)
-    IF @@ERROR <> 0 
+    IF @@ERROR <> 0
         ROLLBACK TRANSACTION T1
-    ELSE 
+    ELSE
         COMMIT TRANSACTION T1
-    END 
+    END
 GO
 
-
--- Insert Package 
-CREATE OR ALTER PROCEDURE Ins_Package 
+-- Insert Package
+CREATE OR ALTER PROCEDURE Ins_Package
 @ProductName VARCHAR(50),
 @Order_Date DATETIME,
 @Order_EmpFName VARCHAR(50),
@@ -614,9 +636,9 @@ BEGIN
     @OR_ID = @OrderID OUTPUT
 
     DECLARE @OrderProductID INT = (
-        SELECT Order_ProductID 
+        SELECT Order_ProductID
         FROM tblORDER_PRODUCT
-        WHERE ProductID = @ProductID 
+        WHERE ProductID = @ProductID
             AND OrderID = @OrderID
         AND Quantity = @Quantity
     )
@@ -625,7 +647,7 @@ BEGIN
 
     EXEC GetShipmentID
     @SP_TrackingNum = @ShipmentTrackingNum,
-    @SP_Date = @ShipmentShippingDate, 
+    @SP_Date = @ShipmentShippingDate,
     @SP_ShipmentTypeName = @ShipmentTypeName,
     @SP_CarrierName = @ShipmentCarrierName,
     @SP_ID = @ShipmentID OUTPUT
@@ -633,12 +655,12 @@ BEGIN
     IF @ShipmentID IS NULL
         THROW 60000, 'Shipment does not exist', 1
 
-    BEGIN TRANSACTION 
+    BEGIN TRANSACTION
     INSERT INTO tblPACKAGE(Order_ProductID, ShipmentID)
     VALUES (@OrderProductID, @ShipmentID)
-    IF @@ERROR <> 0 
+    IF @@ERROR <> 0
         ROLLBACK
-    ELSE 
+    ELSE
         COMMIT
 END
 GO
@@ -659,18 +681,18 @@ DECLARE @EmployeeTypeID INT
 
     IF @EmployeeTypeID IS NULL
         THROW 50209, '@EmployeeTypeID is not found', 1;
-    
+
     BEGIN TRANSACTION T1
         INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
         VALUES(@Ins_EmpFName,@Ins_EmpLName, @Ins_EmpDOB, @EmployeeTypeID)
-    IF @@ERROR <> 0 
+    IF @@ERROR <> 0
         ROLLBACK TRANSACTION T1
-    ELSE 
+    ELSE
         COMMIT TRANSACTION T1
-    END 
+    END
 GO
 
--- Insert sproc order 
+-- Insert sproc order
 CREATE OR ALTER PROC Ins_PopulateOrder
 @OrderDate DATETIME,
 @C_FName1 VARCHAR(50),
@@ -727,19 +749,102 @@ AS
 	COMMIT TRAN T1
 GO
 
+CREATE OR ALTER PROC Ins_Supplier
+@SupplierName VARCHAR(50),
+@SupplierDesc VARCHAR(1000),
+@CityName INT
+AS
+	DECLARE @CityID INT
+	EXEC GetCityID
+	@C_Name = @CityName,
+	@C_ID = @CityID OUTPUT
+
+	IF @CityID IS NULL
+		THROW 51000, 'City not found', 1;
+
+	BEGIN TRAN T1
+		INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc, SupplierID)
+		VALUES (@SupplierName, @SupplierDesc, @CityID)
+
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1;
+			THROW 51001, 'Something went wrong', 1;
+		END
+	COMMIT TRAN T1
+GO
+
+CREATE OR ALTER PROC Ins_Product
+@ProductName VARCHAR(50),
+@ProductDesc VARCHAR(1000),
+@SupplierName VARCHAR(50)
+AS
+	DECLARE @SupplierID INT
+	EXEC GetSupplierID
+	@_SupplierName = @SupplierName,
+	@_Out = @SupplierID OUTPUT
+
+	IF @SupplierID IS NULL
+		THROW 52000, 'Supplier not found', 1;
+
+	BEGIN TRAN T1
+		INSERT INTO tblPRODUCT (ProductName, ProductDesc, SupplierID)
+		VALUES (@ProductName, @ProductDesc, @SupplierID)
+
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1;
+			THROW 52001, 'Something went wrong', 1;
+		END
+	COMMIT TRAN T1
+GO
+
+CREATE OR ALTER PROC Ins_ProductDetail
+@ProductName VARCHAR(50),
+@DetailName VARCHAR(50),
+@Value VARCHAR(1000)
+AS
+	DECLARE @ProductID INT
+	EXEC GetProductID
+	@_ProductName = @ProductName,
+	@_Out = @ProductID OUTPUT
+
+	IF @ProductID IS NULL
+		THROW 53000, 'Product not found', 1;
+
+	DECLARE @DetailID INT
+	EXEC GetDetailID
+	@_DetailName = @DetailName,
+	@_Out = @DetailID OUTPUT
+
+	IF @DetailName IS NULL
+		THROW 53001, 'Detail not found', 1;
+
+	BEGIN TRAN T1
+		INSERT INTO tblPRODUCT_DETAIL (ProductID, DetailID, [Value])
+		VALUES (@ProductID, @DetailID, @Value)
+
+		IF @@ERROR <> 0
+		BEGIN
+			ROLLBACK TRAN T1;
+			THROW 53002, 'Something went wrong', 1;
+		END
+	COMMIT TRAN T1
+GO
+
 -- Populate Packages
-CREATE OR ALTER PROCEDURE PopulatePackages 
+CREATE OR ALTER PROCEDURE PopulatePackages
 @NumPackages INT
-AS 
+AS
 BEGIN
     DECLARE @Run INT = 1
     WHILE @Run <= @NumPackages
         BEGIN
             DECLARE @RandomOrderProductID VARCHAR(100) = (
-                SELECT TOP 1 Order_ProductID 
+                SELECT TOP 1 Order_ProductID
                 FROM tblORDER_PRODUCT
                 ORDER BY NEWID()
-            ) 
+            )
 
             DECLARE @RandomProductName VARCHAR(50) = (
                 SELECT ProductName
@@ -809,33 +914,33 @@ BEGIN
             )
 
             DECLARE @RandomShipmentID INT = (
-                SELECT TOP 1 ShipmentID 
+                SELECT TOP 1 ShipmentID
                 FROM tblSHIPMENT
                 ORDER BY NEWID()
             )
 
             DECLARE @RandomShipmentTrackingNum VARCHAR(50) = (
                 SELECT TrackingNumber
-                FROM tblSHIPMENT 
+                FROM tblSHIPMENT
                 WHERE ShipmentID = @RandomShipmentID
             )
 
             DECLARE @RandomShipmentDate DATETIME = (
                 SELECT ShippingDate
-                FROM tblSHIPMENT 
+                FROM tblSHIPMENT
                 WHERE ShipmentID = @RandomShipmentID
             )
 
             DECLARE @RandomShipmentCarrierName VARCHAR(50) = (
                 SELECT CarrierName
-                FROM tblSHIPMENT 
+                FROM tblSHIPMENT
                 JOIN tblCARRIER ON tblSHIPMENT.CarrierID = tblCARRIER.CarrierID
                 WHERE ShipmentID = @RandomShipmentID
             )
 
             DECLARE @RandomShipmentTypeName VARCHAR(50) = (
                 SELECT ShipmentTypeName
-                FROM tblSHIPMENT 
+                FROM tblSHIPMENT
                 JOIN tblSHIPMENT_TYPE ON tblSHIPMENT.ShipmentTypeID = tblSHIPMENT_TYPE.ShipmentTypeID
                 WHERE ShipmentID = @RandomShipmentID
             )
@@ -865,7 +970,7 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- populate priorities
 INSERT INTO tblPRIORITY (PriorityName, PriorityDesc)
-VALUES 
+VALUES
     ('1A - LTCF & Healthcare Personnel', 'Long term care facility members and authorized front-line healthcare workers'),
     ('1B - 75+ & Frontline Essential Workers', 'Older people of 75+ years & frontline essential workers, key to functionality of critical operations'),
     ('1C - 65-74 & High Risk', 'Those between ages 65-74 or those with high risk medical conditions'),
@@ -875,20 +980,20 @@ GO
 
 -- populate cities and states
 -- Insert cities and states
-CREATE OR ALTER PROCEDURE 
+CREATE OR ALTER PROCEDURE
 PopulateCitiesAndStates
-AS 
+AS
 BEGIN
--- create temporary table 
-SELECT CityName, StateName 
+-- create temporary table
+SELECT CityName, StateName
 INTO #CitiesAndStatesTemp
 FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP]
 
 DECLARE @Run INT = 1
 DECLARE @NumRows INT = (SELECT COUNT(*) FROM #CitiesAndStatesTemp)
 
-WHILE @Run <= @NumRows 
-    BEGIN 
+WHILE @Run <= @NumRows
+    BEGIN
         DECLARE @City VARCHAR(50) = (SELECT TOP 1 CityName FROM #CitiesAndStatesTemp)
         DECLARE @State VARCHAR(50) = (SELECT TOP 1 StateName FROM #CitiesAndStatesTemp)
         DECLARE @StateCode VARCHAR(2) = (SELECT TOP 1 RIGHT(StateName, 2) FROM #CitiesAndStatesTemp)
@@ -925,12 +1030,12 @@ WHILE @Run <= @NumRows
         FROM #CitiesAndStatesTemp
 
         SET @Run = @Run + 1
-    END 
+    END
 END
 GO
 
 -- Populate addresses
-CREATE OR ALTER PROCEDURE 
+CREATE OR ALTER PROCEDURE
 PopulateAddresses
 @NumberOfAddresses INTEGER
 AS
@@ -939,9 +1044,9 @@ DECLARE @Run INTEGER = 1
 WHILE @Run <= @NumberOfAddresses
     BEGIN
     -- get a random city
-    
+
     DECLARE @RandomCityName VARCHAR(100) = (
-        SELECT TOP 1 CityName 
+        SELECT TOP 1 CityName
         FROM tblCITY
         ORDER BY NEWID()
     )
@@ -955,26 +1060,26 @@ WHILE @Run <= @NumberOfAddresses
     )
 
     DECLARE @RandomHouseNumber VARCHAR(5) = (
-        SELECT TOP 1 HouseNumber 
+        SELECT TOP 1 HouseNumber
         FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]
         ORDER BY NEWID()
     )
 
     DECLARE @RandomStreetName VARCHAR(75) = (
-        SELECT TOP 1 StreetName 
-        FROM [PEEPS].[dbo].[tblSTREET_NAME] 
+        SELECT TOP 1 StreetName
+        FROM [PEEPS].[dbo].[tblSTREET_NAME]
         ORDER BY NEWID()
     )
-    
+
     DECLARE @RandomStreetSuffix VARCHAR(25) = (
-        SELECT TOP 1 StreetSuffix 
-        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] 
+        SELECT TOP 1 StreetSuffix
+        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX]
         ORDER BY NEWID()
     )
-    
+
     DECLARE @RandomZip VARCHAR(75) = (
-        SELECT TOP 1 Zip  
-        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] 
+        SELECT TOP 1 Zip
+        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP]
         ORDER BY NEWID()
     )
 
@@ -994,10 +1099,10 @@ END
 GO
 
 -- populate customers
-CREATE OR ALTER PROCEDURE 
+CREATE OR ALTER PROCEDURE
 PopulateCustomers
 @NumberOfCustomers INT
-AS 
+AS
 BEGIN
 DECLARE @Run INTEGER = 1
 WHILE @Run <= @NumberOfCustomers
@@ -1005,7 +1110,7 @@ WHILE @Run <= @NumberOfCustomers
 
     -- Generate random address
      DECLARE @RandomCityName VARCHAR(100) = (
-        SELECT TOP 1 CityName 
+        SELECT TOP 1 CityName
         FROM tblCITY
         ORDER BY NEWID()
     )
@@ -1019,40 +1124,40 @@ WHILE @Run <= @NumberOfCustomers
     )
 
     DECLARE @RandomHouseNumber VARCHAR(5) = (
-        SELECT TOP 1 HouseNumber 
+        SELECT TOP 1 HouseNumber
         FROM [PEEPS].[dbo].[tblHOUSE_NUMBER]
         ORDER BY NEWID()
     )
 
     DECLARE @RandomStreetName VARCHAR(75) = (
-        SELECT TOP 1 StreetName 
-        FROM [PEEPS].[dbo].[tblSTREET_NAME] 
+        SELECT TOP 1 StreetName
+        FROM [PEEPS].[dbo].[tblSTREET_NAME]
         ORDER BY NEWID()
     )
 
     DECLARE @RandomStreetSuffix VARCHAR(25) = (
-        SELECT TOP 1 StreetSuffix 
-        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX] 
+        SELECT TOP 1 StreetSuffix
+        FROM [PEEPS].[dbo].[tblSTREET_SUFFIX]
         ORDER BY NEWID()
     )
-    
+
     DECLARE @RandomZip VARCHAR(75) = (
-        SELECT TOP 1 Zip  
-        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP] 
+        SELECT TOP 1 Zip
+        FROM [PEEPS].[dbo].[tblCITY_STATE_ZIP]
         ORDER BY NEWID()
     )
 
     DECLARE @RandomAddressLine1 VARCHAR(500) = CONCAT(@RandomHouseNumber, ' ', @RandomStreetName, ' ', @RandomStreetSuffix)
 
-    -- Generate customer info 
+    -- Generate customer info
     DECLARE @RandomFirstName VARCHAR(50) = (
-        SELECT TOP 1 FirstName 
+        SELECT TOP 1 FirstName
         FROM [PEEPS].[dbo].[tblFIRST_NAME]
         ORDER BY NEWID()
     )
 
     DECLARE @RandomLastName VARCHAR(50) = (
-        SELECT TOP 1 LastName 
+        SELECT TOP 1 LastName
         FROM [PEEPS].[dbo].[tblLAST_NAME]
         ORDER BY NEWID()
     )
@@ -1063,13 +1168,13 @@ WHILE @Run <= @NumberOfCustomers
 
 
     DECLARE @RandomPriority VARCHAR(50) = (
-        SELECT TOP 1 PriorityName 
+        SELECT TOP 1 PriorityName
         FROM tblPRIORITY
         ORDER BY NEWID()
     )
 
     DECLARE @RandomCustomerType VARCHAR(50) = (
-        SELECT TOP 1 CustomerTypeName 
+        SELECT TOP 1 CustomerTypeName
         FROM tblCUSTOMER_TYPE
         ORDER BY NEWID()
     )
@@ -1095,12 +1200,12 @@ GO
 
 -- populate employees
 INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
-SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2 
+SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2
 FROM tblRAW_EmpData
 
 UPDATE tblEMPLOYEE
 SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Executive')
-WHERE EmployeeID LIKE '%51' 
+WHERE EmployeeID LIKE '%51'
 
 UPDATE tblEMPLOYEE
 SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Part-Time')
@@ -1116,7 +1221,7 @@ WHERE EmployeeID LIKE '%84'
 
 UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Full-Time')
 
-SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E 
+SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E
         JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
 GROUP BY ET.EmployeeTypeName
 
@@ -1125,7 +1230,7 @@ IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
 GO
 
 -- generate tracking num
-CREATE OR ALTER PROCEDURE GenerateTrackingNumber 
+CREATE OR ALTER PROCEDURE GenerateTrackingNumber
 @Output VARCHAR(12) OUTPUT
 AS
 BEGIN
@@ -1133,7 +1238,7 @@ BEGIN
     DECLARE @Run INT = 1
     WHILE @Run <= 12
         BEGIN
-            DECLARE @RandomNumber INT = FLOOR(RAND() * 10) 
+            DECLARE @RandomNumber INT = FLOOR(RAND() * 10)
             SET @Result = CONCAT(@Result, @RandomNumber)
             SET @Run = @Run + 1
         END
@@ -1159,14 +1264,14 @@ WHILE @NumsShipment > 0
             SET @RandShipDays = (SELECT RAND() * 100)
             -- Generate random tracking number
             EXEC GenerateTrackingNumber
-            @Output = @Shipment_TrackingNum OUTPUT 
-            -- Generate random date 
+            @Output = @Shipment_TrackingNum OUTPUT
+            -- Generate random date
             SET @Shipment_Date = DATEADD(DAY, @RandShipDays, GETDATE())
-            -- Get random shipmentTypeID 
+            -- Get random shipmentTypeID
             SET @ShipmentType_ID = (SELECT RAND() * @ShipmentTypeCount + 1)
             SET @Shipment_TypeName = (SELECT ShipmentTypeName FROM tblSHIPMENT_TYPE WHERE ShipmentTypeID = @ShipmentType_ID)
             -- Get random carrierID
-            SET @Number = (SELECT RAND() * 100) 
+            SET @Number = (SELECT RAND() * 100)
             SET @Shipment_CarrierName= (CASE
                                         WHEN @Number < 20
                                         THEN 'UPS'
@@ -1205,14 +1310,14 @@ AS
 	DECLARE @EmployeeCount INT = (SELECT COUNT(*) FROM tblEMPLOYEE)
 	DECLARE @CustomerCount INT = (SELECT COUNT(*) FROM tblCUSTOMER)
     DECLARE @ProductCount INT = (SELECT COUNT(*) FROM tblPRODUCT)
-	-- CUSTOMER ID AND EMPLOYEE ID 
+	-- CUSTOMER ID AND EMPLOYEE ID
 	DECLARE @Emp_RandRowNumber INT, @Cust_RandRowNumber INT, @Prod_RandRowNumber INT
 	-- RANDOM DAYS
 	DECLARE @RandOrderDays INT
 	WHILE @NumsOrder > 0
     BEGIN
             SET @RandOrderDays = (SELECT RAND() * 100)
-            -- Generate random date 
+            -- Generate random date
             SET @RandOrderDate = DATEADD(DAY, @RandOrderDays, GETDATE())
             -- Get random EmployeeID
             SET @Emp_RandRowNumber = (SELECT RAND() * @EmployeeCount + 1)
@@ -1280,7 +1385,7 @@ RETURNS INTEGER
 AS
 BEGIN
 DECLARE @RET INTEGER = 0
-	IF EXISTS 
+	IF EXISTS
     (
 		SELECT *
 		FROM tblADDRESS
@@ -1306,12 +1411,12 @@ RETURNS INTEGER
 AS
 BEGIN
 DECLARE @RET INTEGER = 0
-	IF  
+	IF
     (
 		SELECT COUNT(*)
 		FROM tblSTATE
 	) > 50
-    OR 
+    OR
     (
         SELECT COUNT(*)
         FROM tblSTATE
@@ -1331,29 +1436,129 @@ ADD CONSTRAINT CK_50StatesMax
 CHECK (dbo.fn_50StatesMaxAndNoDupes() = 0)
 GO
 
+-- Order date should be earlier than shipping date
+CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0
+IF EXISTS (SELECT O.OrderID, O.OrderDate, S.ShippingDate FROM tblORDER O
+            JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+            JOIN tblPACKAGE PK ON OP.Order_ProductID = PK.Order_ProductID
+            JOIN tblSHIPMENT S ON PK.ShipmentID = S.ShipmentID
+            WHERE S.ShippingDate < O.OrderDate
+            GROUP BY O.OrderID, O.OrderDate, S.ShippingDate
+        )
+        BEGIN
+            SET @RET = 1
+        END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblORDER with nocheck
+ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
+CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
+GO
+
+-- Employee with less than 21 years old should not be full-time
+CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder21ForFullTime()
+RETURNS INTEGER
+AS
+BEGIN
+DECLARE @RET INTEGER = 0
+IF EXISTS (SELECT EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, CAST(DATEDIFF(day, EmployeeDOB, GETDATE()) / 365.25 AS INT) AS Age, E.EmployeeTypeID
+            FROM tblEMPLOYEE E
+            JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
+            WHERE CAST(DATEDIFF(day, EmployeeDOB, GETDATE()) / 365.25 AS INT) < 21
+            AND ET.EmployeeTypeName = 'Full-Time'
+            GROUP BY EmployeeID, EmployeeFName, EmployeeLName, EmployeeDOB, E.EmployeeTypeID
+        )
+        BEGIN
+            SET @RET = 1
+        END
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblEMPLOYEE with nocheck
+ADD CONSTRAINT CK_EmployeeMustBeOlder21ForFullTime
+CHECK (dbo.fn_EmployeeMustBeOlder21ForFullTime() = 0)
+GO
+
+-- A customer type 'Individual' below the age of 30, can only order 1 quantity  of a product at a time.
+CREATE OR ALTER FUNCTION fn_HasMoreThan1ProductQuanityPerOrder()
+RETURNS INT
+AS
+BEGIN
+	IF EXISTS (
+		SELECT *
+		FROM tblCUSTOMER_TYPE C_T
+			JOIN tblCUSTOMER C ON C_T.CustomerTypeID = C_T.CustomerTypeID
+			JOIN tblORDER O ON C.CustomerID = O.CustomerID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+		WHERE C_T.CustomerTypeName = 'Individual'
+			AND C.CustomerDOB > DATEADD(YEAR, -30, GETDATE())
+			AND O_P.Quantity > 1
+	) RETURN 1
+	RETURN 0
+END
+GO
+
+ALTER TABLE tblORDER WITH NOCHECK
+ADD CONSTRAINT ck_HasMoreThan1ProductQuanityPerOrder
+CHECK (dbo.fn_HasMoreThan1ProductQuanityPerOrder() = 0)
+GO
+
+-- A customer type 'Individual' and 'Household' can not order a product that has a minimum storage temperature below -10 celsius.
+CREATE OR ALTER FUNCTION fn_HasProductMinTempBelowNegative10()
+RETURNS INT
+AS
+BEGIN
+	IF EXISTS (
+		SELECT *
+		FROM tblCUSTOMER_TYPE C_T
+			JOIN tblCUSTOMER C ON C_T.CustomerTypeID = C.CustomerTypeID
+			JOIN tblORDER O ON C.CustomerID = O.CustomerID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblPRODUCT_DETAIL P_D ON P.ProductID = P_D.ProductID
+			JOIN tblDETAIL D ON P_D.DetailID = D.DetailID
+		WHERE (C_T.CustomerTypeName = 'Individual' OR C_T.CustomerTypeName = 'Household')
+			AND D.DetailName = 'Minimum Temperature'
+			AND CAST(P_D.[Value] AS INT) < -10
+	) RETURN 1
+	RETURN 0
+END
+GO
+
+ALTER TABLE tblORDER WITH NOCHECK
+ADD CONSTRAINT ck_HasProductMinTempBelowNegative10
+CHECK (dbo.fn_HasProductMinTempBelowNegative10() = 0)
+GO
 ---------------------------------------------------------------------------------------------------
 -- Computed Columns
 ---------------------------------------------------------------------------------------------------
--- Number of address lines 
+-- Number of address lines
 CREATE FUNCTION fn_NumAddressLines(@PK INT)
 RETURNS INT
 AS
 BEGIN
     DECLARE @RET INT = 0
     IF (
-        SELECT AddressLine1 
+        SELECT AddressLine1
         FROM tblADDRESS
         WHERE AddressID = @PK
-    ) IS NOT NULL 
-    BEGIN 
+    ) IS NOT NULL
+    BEGIN
         SET @Ret = @Ret + 1
     END
     IF (
-        SELECT AddressLine2 
+        SELECT AddressLine2
         FROM tblADDRESS
         WHERE AddressID = @PK
-    ) IS NOT NULL 
-    BEGIN 
+    ) IS NOT NULL
+    BEGIN
         SET @Ret = @Ret + 1
     END
 	RETURN @RET
@@ -1370,7 +1575,7 @@ RETURNS INT
 AS
 BEGIN
 	DECLARE @RET INT = (
-        SELECT FLOOR(DATEDIFF(DAY, CustomerDOB, GETDATE()) / 365.25) 
+        SELECT FLOOR(DATEDIFF(DAY, CustomerDOB, GETDATE()) / 365.25)
         FROM tblCUSTOMER
         WHERE CustomerID = @PK
     )
@@ -1385,8 +1590,8 @@ GO
 
 -- Number of Residents in an Address Household
 CREATE FUNCTION fn_NumberInHouseholdWithHighPriority(@PK INT)
-RETURNS INT 
-AS 
+RETURNS INT
+AS
 BEGIN
     DECLARE @RET INT = (
         SELECT COUNT(*)
@@ -1407,15 +1612,100 @@ ALTER TABLE tblADDRESS
 ADD NumberHighPriorityPeople AS (dbo.fn_NumberInHouseholdWithHighPriority(AddressID))
 GO
 
+--  Total order in each state in the U.S.
 
+CREATE OR ALTER FUNCTION FN_TotalOrderStates(@PK INT)
+RETURNS INT
+AS
+BEGIN
+
+DECLARE @RET INT = (SELECT COUNT(O.OrderID)
+                    FROM tblORDER O
+                        JOIN tblCUSTOMER CS ON O.CustomerID = CS.CustomerID
+                        JOIN tblADDRESS A ON CS.AddressID = A.AddressID
+                        JOIN tblCITY C ON A.CityID = C.CityID
+                        JOIN tblSTATE S ON C.StateID = S.StateID
+                        WHERE S.StateID = @PK
+                    )
+
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblSTATE
+ADD TototalOrder AS (dbo.FN_TotalOrderStates (StateID))
+GO
+
+--  Total order of each product
+CREATE OR ALTER FUNCTION FN_TotalOrderEachProduct(@PK INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @RET INT = (SELECT COUNT(OP.OrderID)
+                        FROM tblORDER_PRODUCT OP
+                        JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
+                        WHERE P.ProductID = @PK)
+RETURN @RET
+END
+GO
+
+ALTER TABLE tblORDER_PRODUCT
+ADD TotalOrderProduct AS (dbo.FN_TotalOrderEachProduct (ProductID))
+GO
+
+-- Number of orders for each supplier
+CREATE OR ALTER FUNCTION fn_OrderCountPerSupplier(@PK INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (
+		SELECT COUNT(*)
+		FROM tblORDER O
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblSUPPLIER S ON P.SupplierID = S.SupplierID
+		WHERE S.SupplierID = @PK
+	)
+END
+GO
+
+IF COL_LENGTH('tblSUPPLIER', 'OrderCount') IS NULL
+BEGIN
+	ALTER TABLE tblSUPPLIER
+	ADD OrderCount AS (dbo.fn_OrderCountPerSupplier(SupplierID))
+END
+GO
+
+-- Number of employees for each customer type
+CREATE OR ALTER FUNCTION fn_CountEmployeePerCustomerType(@PK INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (
+		SELECT COUNT(*)
+		FROM tblEMPLOYEE E
+			JOIN tblORDER O ON E.EmployeeID = O.EmployeeID
+			JOIN tblCUSTOMER Cust ON O.CustomerID = Cust.CustomerID
+			JOIN tblCUSTOMER_TYPE C_T ON Cust.CustomerTypeID = C_T.CustomerTypeID
+		WHERE C_T.CustomerTypeID = @PK
+	)
+END
+GO
+
+IF COL_LENGTH('tblCUSTOMER_TYPE', 'EmployeeCount') IS NULL
+BEGIN
+	ALTER TABLE tblCUSTOMER_TYPE
+	ADD EmployeeCount AS (dbo.fn_CountEmployeePerCustomerType(CustomerTypeID))
+END
+GO
 ---------------------------------------------------------------------------------------------------
 -- Complex Queries (Views)
 ---------------------------------------------------------------------------------------------------
 -- Show customers grouped by priority and their total counts
 CREATE OR ALTER VIEW CustomerPriorityCounts AS
-SELECT 
+SELECT
     (
-        CASE 
+        CASE
             WHEN PriorityName = '1A - LTCF & Healthcare Personnel'
             THEN 'Highest Priority'
             WHEN PriorityName = '1B - 75+ & Frontline Essential Workers'
@@ -1433,10 +1723,10 @@ FROM tblCUSTOMER
     JOIN tblPRIORITY ON tblCUSTOMER.PriorityID = tblPRIORITY.PriorityID
     JOIN tblADDRESS ON tblCUSTOMER.AddressID = tblADDRESS.AddressID
     JOIN tblCITY ON tblADDRESS.CityID = tblCITY.CityID
-    JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID 
-GROUP BY 
+    JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID
+GROUP BY
     (
-        CASE 
+        CASE
             WHEN PriorityName = '1A - LTCF & Healthcare Personnel'
             THEN 'Highest Priority'
             WHEN PriorityName = '1B - 75+ & Frontline Essential Workers'
@@ -1457,14 +1747,84 @@ SELECT RANK() OVER(ORDER BY COUNT(*) DESC) AS Rank, tblSTATE.StateName AS State,
 FROM tblADDRESS
     JOIN tblCUSTOMER ON tblADDRESS.AddressID = tblCUSTOMER.AddressID
     JOIN tblSTATE ON tblADDRESS.StateID = tblSTATE.StateID
-WHERE tblCustomer.CustomerID NOT IN  
+WHERE tblCustomer.CustomerID NOT IN
     (
-        SELECT CustomerID 
+        SELECT CustomerID
         FROM tblCUSTOMER
             JOIN tblPRIORITY ON tblCUSTOMER.PriorityID = tblPRIORITY.PriorityID
         WHERE PriorityName = '1A - LTCF & Healthcare Personnel' OR PriorityName = '1C - 65-74 & High Risk'
     )
 GROUP BY tblADDRESS.StateID, tblSTATE.StateName
+GO
+
+-- Ranking 1 - 50 orders by states and nums of customer
+CREATE VIEW vwTopOrderbyStates
+AS
+SELECT S.StateID, S.StateName, COUNT(O.CustomerID) AS TotalNumsCustomers ,SUM(OP.Quantity) AS TotalProductOrders,
+RANK() OVER (ORDER BY SUM(OP.Quantity) DESC) AS RANK
+FROM tblSTATE S
+    JOIN tblCITY C ON S.StateID = C.StateID
+    JOIN tblADDRESS A ON C.CityID = A.CityID
+    JOIN tblCUSTOMER CS ON A.AddressID = CS.AddressID
+    JOIN tblORDER O ON CS.CustomerID = O.CustomerID
+    JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+    GROUP BY S.StateID, S.StateName
+GO
+
+
+CREATE OR ALTER VIEW vwTheMostTop10PopularProduct
+AS
+SELECT TOP 10 O.OrderID, P.ProductName,SUM(OP.Quantity) AS TotalOrderProduct
+FROM tblORDER O
+    JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
+    JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
+    GROUP BY O.OrderID, P.ProductName
+    ORDER BY SUM(OP.Quantity) DESC
+GO
+
+-- The top 1 supplier in each state, that received the most number of orders from.
+CREATE OR ALTER VIEW vw_Top1SupplierInEachStateByNumberOfOrders
+AS
+	-- The code below was taken and modified from: https://stackoverflow.com/a/6841644
+	WITH cte
+	AS (
+		SELECT S.StateID, S.StateName, SP.SupplierName,
+		COUNT(O.OrderID) AS OrderCount,
+		ROW_NUMBER() OVER (PARTITION BY S.StateID ORDER BY COUNT(O.OrderID) DESC) AS TopNumberOfOrdersRank
+		FROM tblSTATE S
+			JOIN tblCITY CT ON S.StateID = CT.StateID
+			JOIN tblADDRESS A ON CT.CityID = A.CityID
+			JOIN tblCUSTOMER C ON A.AddressID = C.AddressID
+			JOIN tblORDER O ON C.CustomerID = O.CustomerID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblSUPPLIER SP ON P.SupplierID = SP.SupplierID
+		GROUP BY S.StateID, S.StateName, SP.SupplierName
+	)
+	SELECT StateID, StateName, SupplierName, OrderCount
+	FROM cte
+	WHERE TopNumberOfOrdersRank = 1
+GO
+
+-- The lowest temperature that an employee had to deal with.
+CREATE OR ALTER VIEW vw_EmployeeMinTemp
+AS
+	WITH cte
+	AS (
+		SELECT E.EmployeeID, E.EmployeeFName, E.EmployeeLName, P_D.[Value] AS MinTempValue,
+		ROW_NUMBER() OVER (PARTITION BY E.EmployeeID ORDER BY CAST(P_D.[Value] AS INT) ASC) AS LowestTempRank
+		FROM tblEMPLOYEE E
+			JOIN tblORDER O ON E.EmployeeID = O.EmployeeID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblPRODUCT_DETAIL P_D ON P.ProductID = P_D.ProductID
+			JOIN tblDETAIL D ON P_D.DetailID = D.DetailID
+		WHERE D.DetailName = 'Minimum Temperature'
+		GROUP BY E.EmployeeID, E.EmployeeFName, E.EmployeeLName, P_D.[VALUE]
+	)
+	SELECT EmployeeID, EmployeeFName, EmployeeLName, MinTempValue
+	FROM cte
+	WHERE LowestTempRank = 1
 GO
 
 ---------------------------------------------------------------------------------------------------

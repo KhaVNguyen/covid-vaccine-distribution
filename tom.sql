@@ -150,7 +150,7 @@ AS
 	EXEC GetProductID
 	@_ProductName = @ProductName,
 	@_Out = @ProductID OUTPUT
-	
+
 	IF @ProductID IS NULL
 		THROW 53000, 'Product not found', 1;
 
@@ -158,7 +158,7 @@ AS
 	EXEC GetDetailID
 	@_DetailName = @DetailName,
 	@_Out = @DetailID OUTPUT
-	
+
 	IF @DetailName IS NULL
 		THROW 53001, 'Detail not found', 1;
 
@@ -180,9 +180,9 @@ GO
 -- The data below is taken from https://en.wikipedia.org/wiki/COVID-19_vaccine
 IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
 	INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc) VALUES
-	('Pfizer–BioNTech', 'The best vaccine right now, collaborate effort from United States and Germany.'),
+	('Pfizerï¿½BioNTech', 'The best vaccine right now, collaborate effort from United States and Germany.'),
 	('Gamaleya Research Institute', 'The first ever vaccine from Russia.'),
-	('Oxford–AstraZeneca', 'Also a good vaccine from United Kingdom.'),
+	('Oxfordï¿½AstraZeneca', 'Also a good vaccine from United Kingdom.'),
 	('Sinopharm', 'Kinda shady vaccine from China.'),
 	('Sinovac', 'Also kinda shady vaccine from China.'),
 	('Moderna', 'On par with Pfizer, and made from United States.'),
@@ -203,10 +203,11 @@ IF NOT EXISTS (SELECT TOP 1 * FROM tblCUSTOMER_TYPE)
 ---------------------------------------------------------------------------------------------------
 -- Populate Transaction Tables: tblPRODUCT, tblPRODUCT_DETAIL, tblDETAIL
 ---------------------------------------------------------------------------------------------------
-SELECT *, ROW_NUMBER() OVER(ORDER BY SupplierID) AS RowNumber INTO Temp_tblSUPPLIER FROM tblSUPPLIER
 CREATE OR ALTER PROC PopulateProduct
 @N INT
 AS
+	SELECT *, ROW_NUMBER() OVER(ORDER BY SupplierID) AS RowNumber INTO Temp_tblSUPPLIER FROM tblSUPPLIER
+
 	DECLARE @Run INT = 1
 	WHILE @Run <= @N
 	BEGIN
@@ -269,25 +270,159 @@ AS
 
 		SET @Run = @Run + 1
 	END
+
+	DROP TABLE Temp_tblSUPPLIER
 GO
 
 IF (SELECT COUNT(*) FROM tblPRODUCT) <> 50
 	EXEC PopulateProduct @N = 50
 
-IF EXISTS (SELECT TOP 1 * FROM Temp_tblSUPPLIER)
-	DROP TABLE Temp_tblSUPPLIER
+---------------------------------------------------------------------------------------------------
+-- Computed columns
+---------------------------------------------------------------------------------------------------
+-- Number of orders for each supplier
+CREATE OR ALTER FUNCTION fn_OrderCountPerSupplier(@PK INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (
+		SELECT COUNT(*)
+		FROM tblORDER O
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblSUPPLIER S ON P.SupplierID = S.SupplierID
+		WHERE S.SupplierID = @PK
+	)
+END
+GO
+
+IF COL_LENGTH('tblSUPPLIER', 'OrderCount') IS NULL
+BEGIN
+	ALTER TABLE tblSUPPLIER
+	ADD OrderCount AS (dbo.fn_OrderCountPerSupplier(SupplierID))
+END
+
+-- Number of employees for each customer type
+CREATE OR ALTER FUNCTION fn_CountEmployeePerCustomerType(@PK INT)
+RETURNS INT
+AS
+BEGIN
+	RETURN (
+		SELECT COUNT(*)
+		FROM tblEMPLOYEE E
+			JOIN tblORDER O ON E.EmployeeID = O.EmployeeID
+			JOIN tblCUSTOMER Cust ON O.CustomerID = Cust.CustomerID
+			JOIN tblCUSTOMER_TYPE C_T ON Cust.CustomerTypeID = C_T.CustomerTypeID
+		WHERE C_T.CustomerTypeID = @PK
+	)
+END
+GO
+
+IF COL_LENGTH('tblCUSTOMER_TYPE', 'EmployeeCount') IS NULL
+BEGIN
+	ALTER TABLE tblCUSTOMER_TYPE
+	ADD EmployeeCount AS (dbo.fn_CountEmployeePerCustomerType(CustomerTypeID))
+END
 
 ---------------------------------------------------------------------------------------------------
 -- Check constraints
 ---------------------------------------------------------------------------------------------------
+-- A customer type 'Individual' below the age of 30, can only order 1 quantity  of a product at a time.
+CREATE OR ALTER FUNCTION fn_HasMoreThan1ProductQuanityPerOrder()
+RETURNS INT
+AS
+BEGIN
+	IF EXISTS (
+		SELECT *
+		FROM tblCUSTOMER_TYPE C_T
+			JOIN tblCUSTOMER C ON C_T.CustomerTypeID = C_T.CustomerTypeID
+			JOIN tblORDER O ON C.CustomerID = O.CustomerID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+		WHERE C_T.CustomerTypeName = 'Individual'
+			AND C.CustomerDOB > DATEADD(YEAR, -30, GETDATE())
+			AND O_P.Quantity > 1
+	) RETURN 1
+	RETURN 0
+END
+GO
 
----------------------------------------------------------------------------------------------------
--- Computed columns
----------------------------------------------------------------------------------------------------
+ALTER TABLE tblORDER WITH NOCHECK
+ADD CONSTRAINT ck_HasMoreThan1ProductQuanityPerOrder
+CHECK (dbo.fn_HasMoreThan1ProductQuanityPerOrder() = 0)
+
+-- A customer type 'Individual' and 'Household' can not order a product that has a minimum storage temperature below -10 celsius.
+CREATE OR ALTER FUNCTION fn_HasProductMinTempBelowNegative10()
+RETURNS INT
+AS
+BEGIN
+	IF EXISTS (
+		SELECT *
+		FROM tblCUSTOMER_TYPE C_T
+			JOIN tblCUSTOMER C ON C_T.CustomerTypeID = C.CustomerTypeID
+			JOIN tblORDER O ON C.CustomerID = O.CustomerID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblPRODUCT_DETAIL P_D ON P.ProductID = P_D.ProductID
+			JOIN tblDETAIL D ON P_D.DetailID = D.DetailID
+		WHERE (C_T.CustomerTypeName = 'Individual' OR C_T.CustomerTypeName = 'Household')
+			AND D.DetailName = 'Minimum Temperature'
+			AND CAST(P_D.[Value] AS INT) < -10
+	) RETURN 1
+	RETURN 0
+END
+GO
+
+ALTER TABLE tblORDER WITH NOCHECK
+ADD CONSTRAINT ck_HasProductMinTempBelowNegative10
+CHECK (dbo.fn_HasProductMinTempBelowNegative10() = 0)
 
 ---------------------------------------------------------------------------------------------------
 -- Views
 ---------------------------------------------------------------------------------------------------
+-- The top 1 supplier in each state, that received the most number of orders from.
+CREATE OR ALTER VIEW vw_Top1SupplierInEachStateByNumberOfOrders
+AS
+	-- The code below was taken and modified from: https://stackoverflow.com/a/6841644
+	WITH cte
+	AS (
+		SELECT S.StateID, S.StateName, SP.SupplierName,
+		COUNT(O.OrderID) AS OrderCount,
+		ROW_NUMBER() OVER (PARTITION BY S.StateID ORDER BY COUNT(O.OrderID) DESC) AS TopNumberOfOrdersRank
+		FROM tblSTATE S
+			JOIN tblCITY CT ON S.StateID = CT.StateID
+			JOIN tblADDRESS A ON CT.CityID = A.CityID
+			JOIN tblCUSTOMER C ON A.AddressID = C.AddressID
+			JOIN tblORDER O ON C.CustomerID = O.CustomerID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblSUPPLIER SP ON P.SupplierID = SP.SupplierID
+		GROUP BY S.StateID, S.StateName, SP.SupplierName
+	)
+	SELECT StateID, StateName, SupplierName, OrderCount
+	FROM cte
+	WHERE TopNumberOfOrdersRank = 1
+GO
+
+-- The lowest temperature that an employee had to deal with.
+CREATE OR ALTER VIEW vw_EmployeeMinTemp
+AS
+	WITH cte
+	AS (
+		SELECT E.EmployeeID, E.EmployeeFName, E.EmployeeLName, P_D.[Value] AS MinTempValue,
+		ROW_NUMBER() OVER (PARTITION BY E.EmployeeID ORDER BY CAST(P_D.[Value] AS INT) ASC) AS LowestTempRank
+		FROM tblEMPLOYEE E
+			JOIN tblORDER O ON E.EmployeeID = O.EmployeeID
+			JOIN tblORDER_PRODUCT O_P ON O.OrderID = O_P.OrderID
+			JOIN tblPRODUCT P ON O_P.ProductID = P.ProductID
+			JOIN tblPRODUCT_DETAIL P_D ON P.ProductID = P_D.ProductID
+			JOIN tblDETAIL D ON P_D.DetailID = D.DetailID
+		WHERE D.DetailName = 'Minimum Temperature'
+		GROUP BY E.EmployeeID, E.EmployeeFName, E.EmployeeLName, P_D.[VALUE]
+	)
+	SELECT EmployeeID, EmployeeFName, EmployeeLName, MinTempValue
+	FROM cte
+	WHERE LowestTempRank = 1
+GO
 
 ---------------------------------------------------------------------------------------------------
 -- Ignore: Debug Code
@@ -295,5 +430,34 @@ IF EXISTS (SELECT TOP 1 * FROM Temp_tblSUPPLIER)
 SELECT * FROM tblDETAIL
 SELECT * FROM tblSUPPLIER
 DELETE FROM tblSUPPLIER
-DBCC CHECKIDENT ('tblPRODUCT_DETAIL', RESEED, 0)
-TRUNCATE TABLE tblPRODUCT
+DBCC CHECKIDENT ('tblPACKAGE', RESEED, 1)
+TRUNCATE TABLE tblCUSTOMER
+
+DELETE TOP (SELECT COUNT(*) FROM tblCUSTOMER) FROM tblCUSTOMER
+
+SELECT * FROM tblORDER_PRODUCT
+
+ALTER TABLE tblORDER
+ADD FOREIGN KEY (CustomerID) REFERENCES tblCUSTOMER(CustomerID);
+
+ALTER TABLE tblORDER_PRODUCT
+ADD FOREIGN KEY (ProductID) REFERENCES tblPRODUCT(ProductID);
+
+
+ALTER TABLE tblPACKAGE
+ADD FOREIGN KEY (Order_ProductID) REFERENCES tblORDER_PRODUCT(Order_ProductID);
+
+SELECT * FROM tblCUSTOMER
+SELECT * FROM tblADDRESS
+
+ALTER TABLE tblPACKAGE
+ADD FOREIGN KEY (Order_ProductID) REFERENCES tblORDER_PRODUCT(Order_ProductID);
+
+SELECT @@SPID AS CurrentSPID
+SELECT *
+FROM sys. dm_exec_sessions
+
+kill 62
+
+
+TRUNCATE TABLE tblCUSTOMER
