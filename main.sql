@@ -1758,10 +1758,10 @@ GROUP BY tblADDRESS.StateID, tblSTATE.StateName
 GO
 
 -- Ranking 1 - 50 orders by states and nums of customer
-CREATE VIEW vwTopOrderbyStates
+CREATE OR ALTER VIEW vwTopOrderbyStates
 AS
-SELECT S.StateID, S.StateName, COUNT(O.CustomerID) AS TotalNumsCustomers ,SUM(OP.Quantity) AS TotalProductOrders,
-RANK() OVER (ORDER BY SUM(OP.Quantity) DESC) AS RANK
+SELECT S.StateID, S.StateName, COUNT(O.CustomerID) AS TotalNumsCustomers ,COUNT(O.OrderID) AS TotalProductOrders,
+RANK() OVER (ORDER BY COUNT(O.OrderID) DESC) AS RANK
 FROM tblSTATE S
     JOIN tblCITY C ON S.StateID = C.StateID
     JOIN tblADDRESS A ON C.CityID = A.CityID
@@ -1771,15 +1771,15 @@ FROM tblSTATE S
     GROUP BY S.StateID, S.StateName
 GO
 
-
+-- TOP 10 MOST POPULAR PRODCUT 
 CREATE OR ALTER VIEW vwTheMostTop10PopularProduct
 AS
-SELECT TOP 10 O.OrderID, P.ProductName,SUM(OP.Quantity) AS TotalOrderProduct
+SELECT TOP 10 P.ProductID, P.ProductName, COUNT(O.OrderID) AS TotalOrderProduct
 FROM tblORDER O
     JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
     JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
-    GROUP BY O.OrderID, P.ProductName
-    ORDER BY SUM(OP.Quantity) DESC
+    GROUP BY P.ProductID, P.ProductName
+    ORDER BY COUNT(O.OrderID) DESC
 GO
 
 -- The top 1 supplier in each state, that received the most number of orders from.
