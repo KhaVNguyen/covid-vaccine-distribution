@@ -467,6 +467,7 @@ GO
 -- Run populate customers: 
 SELECT * FROM tblCUSTOMER
 SELECT * FROM tblADDRESS
+SELECT * FROM tblORDER
 
 DELETE FROM tblCUSTOMER
 DELETE FROM tblADDRESS
@@ -573,6 +574,7 @@ FROM tblCUSTOMER
     JOIN tblSTATE ON tblCITY.StateID = tblSTATE.StateID 
 WHERE CityName = 'Seattle' AND StateName = 'Washington, WA'
 ORDER BY PriorityID ASC
+GO
 
 
 SELECT * FROM tblCUSTOMER_TYPE

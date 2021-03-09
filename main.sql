@@ -38,7 +38,7 @@ CREATE TABLE tblCARRIER     --with FK
     CarrierName VARCHAR(50) NOT NULL
 );
 GO
-SELECT * FROM tblCARRIER
+
 /*ALTER TABLE tblCARRIER
 DROP CONSTRAINT FK_CityID
 GO
@@ -456,7 +456,7 @@ IF NOT EXISTS (SELECT TOP 1 * FROM tblCUSTOMER_TYPE)
 	INSERT INTO tblCUSTOMER_TYPE (CustomerTypeName) VALUES
 	('Hospital'), ('Clinic'), ('Household'), ('Individual'), ('Federal Institution'),
 	('State Institution'), ('Research Institution'), ('University'), ('School')
-
+GO
 ---------------------------------------------------------------------------------------------------
 -- Insert Stored Procedure
 ---------------------------------------------------------------------------------------------------
@@ -608,7 +608,13 @@ GO
 -- Insert Package
 CREATE OR ALTER PROCEDURE Ins_Package
 @ProductName VARCHAR(50),
-@OrderID INTEGER,
+@Order_Date DATETIME,
+@Order_EmpFName VARCHAR(50),
+@Order_EmpLName VARCHAR(50),
+@Order_EmpDOB DATE,
+@Order_CustFname VARCHAR(50),
+@Order_CustLname VARCHAR(50),
+@Order_CustDOB DATE,
 @Quantity INTEGER,
 @ShipmentTrackingNum VARCHAR(50),
 @ShipmentShippingDate DATETIME,
@@ -617,6 +623,17 @@ CREATE OR ALTER PROCEDURE Ins_Package
 AS
 BEGIN
     DECLARE @ProductID INT = (SELECT ProductID FROM tblPRODUCT WHERE ProductName = @ProductName)
+    DECLARE @OrderID INT
+
+    EXEC GetOrderID
+    @OR_Date = @Order_Date,
+    @OR_EmpFName = @Order_EmpFName,
+    @OR_EmpLName = @Order_EmpLName,
+    @OR_EmpDOB = @Order_EmpDOB,
+    @OR_CustFname = @Order_CustFname,
+    @OR_CustLname = @Order_CustLname,
+    @OR_CustDOB = @Order_CustDOB,
+    @OR_ID = @OrderID OUTPUT
 
     DECLARE @OrderProductID INT = (
         SELECT Order_ProductID
@@ -647,7 +664,6 @@ BEGIN
         COMMIT
 END
 GO
-
 
 -- Insert Employee
 CREATE OR ALTER PROCEDURE Ins_Employee
@@ -843,6 +859,54 @@ BEGIN
                 WHERE Order_ProductID = @RandomOrderProductID
             )
 
+            DECLARE @RandomOrderDate DATETIME = (
+                SELECT OrderDate
+                FROM tblORDER
+                WHERE OrderID = @RandomOrderID
+            )
+
+            DECLARE @RandomOrderEmpFname VARCHAR(50) = (
+                SELECT EmployeeFName
+                FROM tblORDER
+                JOIN tblEMPLOYEE ON tblORDER.EmployeeID = tblEMPLOYEE.EmployeeID
+                WHERE OrderID = @RandomOrderID
+            )
+
+            DECLARE @RandomOrderEmpLname VARCHAR(50) = (
+                SELECT EmployeeLName
+                FROM tblORDER
+                JOIN tblEMPLOYEE ON tblORDER.EmployeeID = tblEMPLOYEE.EmployeeID
+                WHERE OrderID = @RandomOrderID
+            )
+
+            DECLARE @RandomOrderEmpDOB VARCHAR(50) = (
+                SELECT EmployeeDOB
+                FROM tblORDER
+                JOIN tblEMPLOYEE ON tblORDER.EmployeeID = tblEMPLOYEE.EmployeeID
+                WHERE OrderID = @RandomOrderID
+            )
+
+            DECLARE @RandomOrderCustFname VARCHAR(50) = (
+                SELECT CustomerFname
+                FROM tblORDER
+                JOIN tblCUSTOMER ON tblORDER.CustomerID = tblCUSTOMER.CustomerID
+                WHERE OrderID = @RandomOrderID
+            )
+
+            DECLARE @RandomOrderCustLname VARCHAR(50) = (
+                SELECT CustomerLname
+                FROM tblORDER
+                JOIN tblCUSTOMER ON tblORDER.CustomerID = tblCUSTOMER.CustomerID
+                WHERE OrderID = @RandomOrderID
+            )
+
+            DECLARE @RandomOrderCustDOB VARCHAR(50) = (
+                SELECT CustomerDOB
+                FROM tblORDER
+                JOIN tblCUSTOMER ON tblORDER.CustomerID = tblCUSTOMER.CustomerID
+                WHERE OrderID = @RandomOrderID
+            )
+
             DECLARE @RandomQuantity INT = (
                 SELECT Quantity
                 FROM tblORDER_PRODUCT
@@ -883,7 +947,13 @@ BEGIN
 
             EXEC Ins_Package
             @ProductName = @RandomProductName,
-            @OrderID = @RandomOrderID,
+            @Order_Date = @RandomOrderDate,
+            @Order_EmpFName = @RandomOrderEmpFname,
+            @Order_EmpLName = @RandomOrderEmpLname,
+            @Order_EmpDOB = @RandomOrderEmpDOB,
+            @Order_CustFname = @RandomOrderCustFname,
+            @Order_CustLname = @RandomOrderCustLname,
+            @Order_CustDOB = @RandomOrderCustDOB,
             @Quantity = @RandomQuantity,
             @ShipmentTrackingNum = @RandomShipmentTrackingNum,
             @ShipmentShippingDate = @RandomShipmentDate,
@@ -1000,7 +1070,6 @@ WHILE @Run <= @NumberOfAddresses
         FROM [PEEPS].[dbo].[tblSTREET_NAME]
         ORDER BY NEWID()
     )
-
 
     DECLARE @RandomStreetSuffix VARCHAR(25) = (
         SELECT TOP 1 StreetSuffix
@@ -1326,7 +1395,6 @@ DECLARE @RET INTEGER = 0
 	BEGIN
 		SET @RET = 1;
         THROW 60000, 'The city in all addresses must be associated with the correct state', 1
-
 	END
 RETURN @RET
 END
@@ -1356,7 +1424,8 @@ DECLARE @RET INTEGER = 0
         HAVING COUNT(*) > 1
     ) > 0
 	BEGIN
-		SET @RET = 1
+		SET @RET = 1;
+        THROW 60001, 'There can only be 50 unique states', 1
 	END
 RETURN @RET
 END
@@ -1364,7 +1433,7 @@ GO
 
 ALTER TABLE tblSTATE with nocheck
 ADD CONSTRAINT CK_50StatesMax
-CHECK (dbo.fn_50StatesMax() = 0)
+CHECK (dbo.fn_50StatesMaxAndNoDupes() = 0)
 GO
 
 -- Order date should be earlier than shipping date
@@ -1439,6 +1508,7 @@ GO
 ALTER TABLE tblORDER WITH NOCHECK
 ADD CONSTRAINT ck_HasMoreThan1ProductQuanityPerOrder
 CHECK (dbo.fn_HasMoreThan1ProductQuanityPerOrder() = 0)
+GO
 
 -- A customer type 'Individual' and 'Household' can not order a product that has a minimum storage temperature below -10 celsius.
 CREATE OR ALTER FUNCTION fn_HasProductMinTempBelowNegative10()
@@ -1465,7 +1535,7 @@ GO
 ALTER TABLE tblORDER WITH NOCHECK
 ADD CONSTRAINT ck_HasProductMinTempBelowNegative10
 CHECK (dbo.fn_HasProductMinTempBelowNegative10() = 0)
-
+GO
 ---------------------------------------------------------------------------------------------------
 -- Computed Columns
 ---------------------------------------------------------------------------------------------------
@@ -1604,6 +1674,7 @@ BEGIN
 	ALTER TABLE tblSUPPLIER
 	ADD OrderCount AS (dbo.fn_OrderCountPerSupplier(SupplierID))
 END
+GO
 
 -- Number of employees for each customer type
 CREATE OR ALTER FUNCTION fn_CountEmployeePerCustomerType(@PK INT)
@@ -1626,7 +1697,7 @@ BEGIN
 	ALTER TABLE tblCUSTOMER_TYPE
 	ADD EmployeeCount AS (dbo.fn_CountEmployeePerCustomerType(CustomerTypeID))
 END
-
+GO
 ---------------------------------------------------------------------------------------------------
 -- Complex Queries (Views)
 ---------------------------------------------------------------------------------------------------
