@@ -1203,6 +1203,8 @@ INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeI
 SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2
 FROM tblRAW_EmpData
 
+UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Full-Time')
+
 UPDATE tblEMPLOYEE
 SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Executive')
 WHERE EmployeeID LIKE '%51'
@@ -1218,8 +1220,6 @@ WHERE EmployeeID LIKE '%72'
 UPDATE tblEMPLOYEE
 SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Temporary')
 WHERE EmployeeID LIKE '%84'
-
-UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Full-Time')
 
 SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E
         JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
