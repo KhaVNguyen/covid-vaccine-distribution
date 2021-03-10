@@ -434,6 +434,7 @@ INSERT INTO tblCARRIER(CarrierName)
 VALUES('UPS'),('USPS'),('DHL'),('FedEx')
 GO
 
+-- Tom
 -- The data below is taken from https://en.wikipedia.org/wiki/COVID-19_vaccine
 IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
 	INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc) VALUES
@@ -445,6 +446,7 @@ IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
 	('Moderna', 'On par with Pfizer, and made from United States.'),
 	('Johnson & Johnson', 'This is the new one from United States and Netherlands.')
 
+-- Tom
 IF NOT EXISTS (SELECT TOP 1 * FROM tblDETAIL)
 	INSERT INTO tblDETAIL (DetailName, DetailDesc) VALUES
 	('Minimum Temperature', 'Minimum temperature in celsius that the product can withstand.'),
@@ -452,6 +454,7 @@ IF NOT EXISTS (SELECT TOP 1 * FROM tblDETAIL)
 	('Recommended Temperature', 'Recommended temperature in celsius for storing the product'),
 	('Weight', 'Weight in grams for a single product unit.')
 
+-- Tom
 IF NOT EXISTS (SELECT TOP 1 * FROM tblCUSTOMER_TYPE)
 	INSERT INTO tblCUSTOMER_TYPE (CustomerTypeName) VALUES
 	('Hospital'), ('Clinic'), ('Household'), ('Individual'), ('Federal Institution'),
@@ -749,6 +752,7 @@ AS
 	COMMIT TRAN T1
 GO
 
+-- Tom
 CREATE OR ALTER PROC Ins_Supplier
 @SupplierName VARCHAR(50),
 @SupplierDesc VARCHAR(1000),
@@ -774,6 +778,7 @@ AS
 	COMMIT TRAN T1
 GO
 
+-- Tom
 CREATE OR ALTER PROC Ins_Product
 @ProductName VARCHAR(50),
 @ProductDesc VARCHAR(1000),
@@ -799,6 +804,7 @@ AS
 	COMMIT TRAN T1
 GO
 
+-- Tom
 CREATE OR ALTER PROC Ins_ProductDetail
 @ProductName VARCHAR(50),
 @DetailName VARCHAR(50),
@@ -1353,6 +1359,83 @@ AS
     DROP TABLE Temp_tblPRODUCT
 GO
 
+---------------------------------------------------------------------------------------------------
+-- Populate Transaction Tables: tblPRODUCT, tblPRODUCT_DETAIL, tblDETAIL
+---------------------------------------------------------------------------------------------------
+-- TOm
+CREATE OR ALTER PROC PopulateProduct
+@N INT
+AS
+	SELECT *, ROW_NUMBER() OVER(ORDER BY SupplierID) AS RowNumber INTO Temp_tblSUPPLIER FROM tblSUPPLIER
+
+	DECLARE @Run INT = 1
+	WHILE @Run <= @N
+	BEGIN
+		DECLARE @RandProductName VARCHAR(50) = (
+			-- This line of code was taken and modified from https://www.sqlteam.com/forums/topic.asp?TOPIC_ID=21132
+			SELECT CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
+				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
+				'-' +
+				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
+				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
+				CHAR(CAST((90 - 65) * RAND() + 65 AS INT)) +
+				'-' +
+				CAST(FLOOR(10000 * RAND()) AS CHAR)
+		)
+
+		DECLARE @RandProductDesc VARCHAR(1000) = (
+			'This is a random product description given a number of ' + CAST(RAND() AS VARCHAR(10))
+		)
+
+		DECLARE @RandSupplierRowNumber INT = FLOOR(RAND() * (SELECT COUNT(*) FROM tblSUPPLIER) + 1)
+		DECLARE @RandSupplierName VARCHAR(50) = (SELECT SupplierName FROM Temp_tblSUPPLIER WHERE RowNumber = @RandSupplierRowNumber)
+
+		DECLARE @RandMinTemp INT = RAND() * -100
+		DECLARE @RandMaxTemp INT = @RandMinTemp + RAND() * 10
+		DECLARE @RandRecTemp INT = @RandMaxTemp - RAND() * 5
+		DECLARE @RandWeight INT = RAND() * 10
+
+		BEGIN TRAN T1
+			EXEC Ins_Product
+			@ProductName = @RandProductName,
+			@ProductDesc = @RandProductDesc,
+			@SupplierName = @RandSupplierName
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Minimum Temperature',
+			@Value = @RandMinTemp
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Maximum Temperature',
+			@Value = @RandMaxTemp
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Recommended Temperature',
+			@Value = @RandRecTemp
+
+			EXEC Ins_ProductDetail
+			@ProductName = @RandProductName,
+			@DetailName = 'Weight',
+			@Value = @RandWeight
+
+			IF @@ERROR <> 0
+			BEGIN
+				ROLLBACK TRAN T1;
+				THROW 54000, 'Something went wrong', 1;
+			END
+		COMMIT TRAN T1
+
+		SET @Run = @Run + 1
+	END
+
+	DROP TABLE Temp_tblSUPPLIER
+GO
+
+IF (SELECT COUNT(*) FROM tblPRODUCT) <> 50
+	EXEC PopulateProduct @N = 50
 
 ---------------------------------------------------------------------------------------------------
 -- Test Populating Data
@@ -1486,6 +1569,7 @@ ADD CONSTRAINT CK_EmployeeMustBeOlder21ForFullTime
 CHECK (dbo.fn_EmployeeMustBeOlder21ForFullTime() = 0)
 GO
 
+-- Tom
 -- A customer type 'Individual' below the age of 30, can only order 1 quantity  of a product at a time.
 CREATE OR ALTER FUNCTION fn_HasMoreThan1ProductQuanityPerOrder()
 RETURNS INT
@@ -1510,6 +1594,7 @@ ADD CONSTRAINT ck_HasMoreThan1ProductQuanityPerOrder
 CHECK (dbo.fn_HasMoreThan1ProductQuanityPerOrder() = 0)
 GO
 
+-- Tom
 -- A customer type 'Individual' and 'Household' can not order a product that has a minimum storage temperature below -10 celsius.
 CREATE OR ALTER FUNCTION fn_HasProductMinTempBelowNegative10()
 RETURNS INT
@@ -1653,6 +1738,7 @@ ALTER TABLE tblORDER_PRODUCT
 ADD TotalOrderProduct AS (dbo.FN_TotalOrderEachProduct (ProductID))
 GO
 
+-- Tom
 -- Number of orders for each supplier
 CREATE OR ALTER FUNCTION fn_OrderCountPerSupplier(@PK INT)
 RETURNS INT
@@ -1676,6 +1762,7 @@ BEGIN
 END
 GO
 
+-- Tom
 -- Number of employees for each customer type
 CREATE OR ALTER FUNCTION fn_CountEmployeePerCustomerType(@PK INT)
 RETURNS INT
@@ -1774,7 +1861,7 @@ GO
 
 CREATE OR ALTER VIEW vwTheMostTop10PopularProduct
 AS
-SELECT TOP 10 O.OrderID, P.ProductName,SUM(OP.Quantity) AS TotalOrderProduct
+SELECT TOP 10 O.OrderID, P.ProductName, SUM(OP.Quantity) AS TotalOrderProduct
 FROM tblORDER O
     JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
     JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
@@ -1782,6 +1869,7 @@ FROM tblORDER O
     ORDER BY SUM(OP.Quantity) DESC
 GO
 
+-- Tom
 -- The top 1 supplier in each state, that received the most number of orders from.
 CREATE OR ALTER VIEW vw_Top1SupplierInEachStateByNumberOfOrders
 AS
@@ -1806,6 +1894,7 @@ AS
 	WHERE TopNumberOfOrdersRank = 1
 GO
 
+-- Tom
 -- The lowest temperature that an employee had to deal with.
 CREATE OR ALTER VIEW vw_EmployeeMinTemp
 AS

@@ -423,17 +423,3 @@ AS
 	FROM cte
 	WHERE LowestTempRank = 1
 GO
-
----------------------------------------------------------------------------------------------------
--- Ignore: Debug Code
----------------------------------------------------------------------------------------------------
---TRUNCATE TABLE tblCUSTOMER
---DBCC CHECKIDENT ('tblPACKAGE', RESEED, 1)
---TRUNCATE TABLE tblCUSTOMER
-
---ALTER TABLE tblPACKAGE
---ADD FOREIGN KEY (Order_ProductID) REFERENCES tblORDER_PRODUCT(Order_ProductID);
-
---SELECT @@SPID AS CurrentSPID
---SELECT *
---FROM sys. dm_exec_sessions
