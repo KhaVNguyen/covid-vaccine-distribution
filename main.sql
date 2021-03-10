@@ -4,6 +4,7 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Shipping process Tables
 ---------------------------------------------------------------------------------------------------
+-- Made by Kha
 CREATE TABLE tblSTATE
 (
     StateID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -12,6 +13,7 @@ CREATE TABLE tblSTATE
 );
 GO
 
+-- Made by Kha
 CREATE TABLE tblCITY
 (
     CityID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -20,6 +22,7 @@ CREATE TABLE tblCITY
 );
 GO
 
+-- Made by Kha
 CREATE TABLE tblADDRESS
 (
     AddressID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -90,6 +93,7 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Customer related Tables
 ---------------------------------------------------------------------------------------------------
+-- Made by Kha
 CREATE TABLE tblPRIORITY
 (
     PriorityID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -153,6 +157,7 @@ CREATE TABLE tblORDER_PRODUCT (
 )
 GO
 
+-- Made by Kha
 CREATE TABLE tblPACKAGE
 (
     PackageID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -216,7 +221,7 @@ AS
 	)
 GO
 
--- Kha
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetStateID
 @S_Name VARCHAR(50),
 @S_ID INT OUTPUT
@@ -224,6 +229,7 @@ AS
 SET @S_ID = (SELECT StateID FROM tblSTATE WHERE StateName = @S_Name)
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetCityID
 @C_Name VARCHAR(50),
 @C_ID INT OUTPUT
@@ -231,6 +237,7 @@ AS
 SET @C_ID = (SELECT CityID FROM tblCITY WHERE CityName = @C_Name)
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetAddressID
 @A_Line1 VARCHAR(100),
 @A_Line2 VARCHAR(100),
@@ -260,6 +267,7 @@ SET @A_ID = (
 )
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetPriorityID
 @P_Name VARCHAR(50),
 @P_ID INT OUTPUT
@@ -267,6 +275,7 @@ AS
 SET @P_ID = (SELECT PriorityID FROM tblPRIORITY WHERE PriorityName = @P_Name)
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetCustomerID
 @C_Fname VARCHAR(50),
 @C_Lname VARCHAR(50),
@@ -391,7 +400,7 @@ EXEC GetEmployeeID
 @E_DOB = @OR_EmpDOB,
 @E_ID = @EmployeeID OUTPUT
 
--- combined from Kha
+-- Made by Kha
 EXEC GetCustomerID
 @C_Fname = @OR_CustFname,
 @C_Lname = @OR_CustLname,
@@ -460,7 +469,9 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Insert Stored Procedure
 ---------------------------------------------------------------------------------------------------
+
 -- Insert address
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 CreateNewAddress
 @AddressLine1 VARCHAR(100),
@@ -499,6 +510,7 @@ END
 GO
 
 -- Insert customer
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 CreateNewCustomer
 @CustomerFname VARCHAR(50),
@@ -969,6 +981,7 @@ GO
 -- Populating Data
 ---------------------------------------------------------------------------------------------------
 -- populate priorities
+-- Made by Kha
 INSERT INTO tblPRIORITY (PriorityName, PriorityDesc)
 VALUES
     ('1A - LTCF & Healthcare Personnel', 'Long term care facility members and authorized front-line healthcare workers'),
@@ -1035,6 +1048,7 @@ END
 GO
 
 -- Populate addresses
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 PopulateAddresses
 @NumberOfAddresses INTEGER
@@ -1099,6 +1113,7 @@ END
 GO
 
 -- populate customers
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 PopulateCustomers
 @NumberOfCustomers INT
@@ -1380,6 +1395,7 @@ GO
 -- Business Rules
 ---------------------------------------------------------------------------------------------------
 -- Cities must be in the correct state for addresses
+-- Made by Kha
 CREATE FUNCTION fn_AddressCityMustBeInState()
 RETURNS INTEGER
 AS
@@ -1406,6 +1422,7 @@ CHECK (dbo.fn_AddressCityMustBeInState() = 0)
 GO
 
 -- Only 50 states can exist
+-- Made by Kha
 CREATE FUNCTION fn_50StatesMaxAndNoDupes()
 RETURNS INTEGER
 AS
@@ -1540,6 +1557,7 @@ GO
 -- Computed Columns
 ---------------------------------------------------------------------------------------------------
 -- Number of address lines
+-- Made by Kha
 CREATE FUNCTION fn_NumAddressLines(@PK INT)
 RETURNS INT
 AS
@@ -1570,6 +1588,7 @@ ADD NumAddressLines AS (dbo.fn_NumAddressLines(AddressID))
 GO
 
 -- Customer age
+-- Made by Kha
 CREATE FUNCTION fn_CustomerAge(@PK INT)
 RETURNS INT
 AS
@@ -1589,6 +1608,7 @@ GO
 
 
 -- Number of Residents in an Address Household
+-- Made by Kha
 CREATE FUNCTION fn_NumberInHouseholdWithHighPriority(@PK INT)
 RETURNS INT
 AS
@@ -1702,6 +1722,7 @@ GO
 -- Complex Queries (Views)
 ---------------------------------------------------------------------------------------------------
 -- Show customers grouped by priority and their total counts
+-- Made by Kha
 CREATE OR ALTER VIEW CustomerPriorityCounts AS
 SELECT
     (
@@ -1742,6 +1763,7 @@ GROUP BY
     )
 GO
 
+-- Made by Kha
 CREATE OR ALTER VIEW NumNonPriorityHouseholdsRanking AS
 SELECT RANK() OVER(ORDER BY COUNT(*) DESC) AS Rank, tblSTATE.StateName AS State, COUNT(*) AS Count
 FROM tblADDRESS
