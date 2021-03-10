@@ -4,6 +4,8 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Shipping process Tables
 ---------------------------------------------------------------------------------------------------
+
+-- Made by Kha
 CREATE TABLE tblSTATE
 (
     StateID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -12,6 +14,7 @@ CREATE TABLE tblSTATE
 );
 GO
 
+-- Made by Kha
 CREATE TABLE tblCITY
 (
     CityID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -20,6 +23,7 @@ CREATE TABLE tblCITY
 );
 GO
 
+-- Made by Kha
 CREATE TABLE tblADDRESS
 (
     AddressID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -31,26 +35,15 @@ CREATE TABLE tblADDRESS
 );
 GO
 
-
-CREATE TABLE tblCARRIER     --with FK
+-- Made by Jisu
+CREATE TABLE tblCARRIER
 (
     CarrierID INTEGER IDENTITY(1,1) PRIMARY KEY,
     CarrierName VARCHAR(50) NOT NULL
 );
 GO
 
-/*ALTER TABLE tblCARRIER
-DROP CONSTRAINT FK_CityID
-GO
-
-ALTER TABLE tblCARRIER
-DROP COLUMN CityID
-GO
-
-select * from tblCARRIER
-
-delete from tblCARRIER where CarrierID > 2411728*/
-
+-- Made by Jisu
 CREATE TABLE tblSHIPMENT_TYPE
 (
     ShipmentTypeID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -59,7 +52,8 @@ CREATE TABLE tblSHIPMENT_TYPE
 );
 GO
 
-CREATE TABLE tblSHIPMENT     --with FK
+-- Made by Jisu
+CREATE TABLE tblSHIPMENT
 (
     ShipmentID INTEGER IDENTITY(1,1) PRIMARY KEY,
     TrackingNumber VARCHAR(50) NOT NULL,
@@ -69,6 +63,7 @@ CREATE TABLE tblSHIPMENT     --with FK
 );
 GO
 
+-- Made by Jisu
 CREATE TABLE tblEMPLOYEE_TYPE
 (
     EmployeeTypeID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -77,7 +72,8 @@ CREATE TABLE tblEMPLOYEE_TYPE
 );
 GO
 
-CREATE TABLE tblEMPLOYEE     --with FK
+-- Made by Jisu
+CREATE TABLE tblEMPLOYEE
 (
     EmployeeID INTEGER IDENTITY(1,1) PRIMARY KEY,
     EmployeeFName VARCHAR(50) NOT NULL,
@@ -90,6 +86,7 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Customer related Tables
 ---------------------------------------------------------------------------------------------------
+-- Made by Kha
 CREATE TABLE tblPRIORITY
 (
     PriorityID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -121,7 +118,9 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Order process Tables
 ---------------------------------------------------------------------------------------------------
-CREATE TABLE tblORDER     --with FK
+
+-- Made by Jisu
+CREATE TABLE tblORDER
 (
     OrderID INTEGER IDENTITY(1,1) PRIMARY KEY,
     OrderDate DATETIME NOT NULL,
@@ -153,6 +152,7 @@ CREATE TABLE tblORDER_PRODUCT (
 )
 GO
 
+-- Made by Kha
 CREATE TABLE tblPACKAGE
 (
     PackageID INTEGER IDENTITY(1,1) PRIMARY KEY,
@@ -216,7 +216,7 @@ AS
 	)
 GO
 
--- Kha
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetStateID
 @S_Name VARCHAR(50),
 @S_ID INT OUTPUT
@@ -224,6 +224,7 @@ AS
 SET @S_ID = (SELECT StateID FROM tblSTATE WHERE StateName = @S_Name)
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetCityID
 @C_Name VARCHAR(50),
 @C_ID INT OUTPUT
@@ -231,6 +232,7 @@ AS
 SET @C_ID = (SELECT CityID FROM tblCITY WHERE CityName = @C_Name)
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetAddressID
 @A_Line1 VARCHAR(100),
 @A_Line2 VARCHAR(100),
@@ -260,6 +262,7 @@ SET @A_ID = (
 )
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetPriorityID
 @P_Name VARCHAR(50),
 @P_ID INT OUTPUT
@@ -267,6 +270,7 @@ AS
 SET @P_ID = (SELECT PriorityID FROM tblPRIORITY WHERE PriorityName = @P_Name)
 GO
 
+-- Made by Kha
 CREATE OR ALTER PROCEDURE GetCustomerID
 @C_Fname VARCHAR(50),
 @C_Lname VARCHAR(50),
@@ -282,8 +286,7 @@ AS
 	)
 GO
 
--- Annie
--- GET ShipmentTypeID
+-- Made by Jisu
 CREATE OR ALTER PROCEDURE GetShipmentTypeID
     @ST_Name    VARCHAR(50),
     @ST_ID      INT OUTPUT
@@ -295,7 +298,7 @@ SET @ST_ID = (
 )
 GO
 
--- GET CarrierID
+-- Made by Jisu
 CREATE OR ALTER PROCEDURE GetCarrierID
     @CR_Name    VARCHAR(50),
     @CR_ID      INT OUTPUT
@@ -307,7 +310,7 @@ SET @CR_ID = (
 )
 GO
 
--- GET ShipmentID (with FK ShipmentType and FK Carrier)
+-- Made by Jisu
 CREATE OR ALTER PROCEDURE GetShipmentID
     @SP_TrackingNum         VARCHAR(50),
     @SP_Date                DATETIME,
@@ -336,7 +339,7 @@ SET @SP_ID = (
 )
 GO
 
--- GET EmployeeTypeID
+-- Made by Jisu
 CREATE OR ALTER PROCEDURE GetEmployeeTypeID
     @ET_Name     VARCHAR(50),
     @ET_ID       INT OUTPUT
@@ -348,7 +351,7 @@ SET @ET_ID = (
 )
 GO
 
--- GET EmployeeID
+-- Made by Jisu
 CREATE OR ALTER PROCEDURE GetEmployeeID
     @E_FName            VARCHAR(50),
     @E_LName            VARCHAR(50),
@@ -364,7 +367,7 @@ SET @E_ID = (
 )
 GO
 
--- GET OrderID (with FK EmployeeID and FK Customer)
+-- Made by Jisu
 CREATE OR ALTER PROCEDURE GetOrderID
     @OR_Date            DATETIME,
     @OR_EmpFName        VARCHAR(50),
@@ -391,7 +394,7 @@ EXEC GetEmployeeID
 @E_DOB = @OR_EmpDOB,
 @E_ID = @EmployeeID OUTPUT
 
--- combined from Kha
+-- Made by Kha
 EXEC GetCustomerID
 @C_Fname = @OR_CustFname,
 @C_Lname = @OR_CustLname,
@@ -409,6 +412,7 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Insert data into tables without FK
 ---------------------------------------------------------------------------------------------------
+-- Made by Jisu
 -- EMPLOYEE DATA
 CREATE TABLE  tblRAW_EmpData-- CREATE SCRIPT TABLE
 (Emp_PK_ID INT IDENTITY (1,1) primary key,
@@ -416,19 +420,23 @@ Emp_FName VARCHAR(50) NOT NULL,
 Emp_LName VARCHAR(50) NOT NULL,
 Emp_DOB DATE NOT NULL)
 
+-- Made by Jisu
 INSERT INTO tblRAW_EmpData -- INSERT DATA FROM ORIGINAL TABLE/DATASET
 (Emp_FName, Emp_LName, Emp_DOB)
 SELECT CustomerFname, CustomerLname, DateOfBirth
 FROM PEEPS.dbo.tblCUSTOMER
 
+-- Made by Jisu
 -- EMPLOYEE TYPE DATA
 INSERT INTO tblEMPLOYEE_TYPE(EmployeeTypeName, EmployeeTypeDesc)
 VALUES('Part-Time', ''), ('Full-Time', ''), ('Contingent', ''), ('Temporary', ''),  ('Executive', '')
 
+-- Made by Jisu
 -- Shipment Type Data
 INSERT INTO tblSHIPMENT_TYPE(ShipmentTypeName, ShipmentTypeDesc)
 VALUES('Priority Express', 'Estimated 1-2 days or Overnight'), ('Priority', 'Estimated 1-3 days'), ('Parcel', 'Estimated 2-8 days'), ('First Class', 'Estimated 1–3 days up to 13 oz')
 
+-- Made by Jisu
 -- Carrier Data
 INSERT INTO tblCARRIER(CarrierName)
 VALUES('UPS'),('USPS'),('DHL'),('FedEx')
@@ -463,7 +471,9 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Insert Stored Procedure
 ---------------------------------------------------------------------------------------------------
+
 -- Insert address
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 CreateNewAddress
 @AddressLine1 VARCHAR(100),
@@ -502,6 +512,7 @@ END
 GO
 
 -- Insert customer
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 CreateNewCustomer
 @CustomerFname VARCHAR(50),
@@ -570,6 +581,7 @@ ELSE
 END
 GO
 
+-- Made by Jisu
 -- Insert shipment
 CREATE OR ALTER PROCEDURE Ins_Shipment
     @InsSP_TrackingNum         VARCHAR(50),
@@ -585,18 +597,14 @@ EXEC GetShipmentTypeID
 @ST_ID = @ShipmentTypeID OUTPUT
 
     IF @ShipmentTypeID IS NULL
-    BEGIN
         THROW 50207, '@ShipmentTypeID is not found', 1;
-    END
 
 EXEC GetCarrierID
 @CR_Name = @InsSP_CarrierName,
 @CR_ID = @CarrierID OUTPUT
 
     IF @CarrierID IS NULL
-    BEGIN
         THROW 50300, '@CarrierID is not found', 1;
-    END
 
     BEGIN TRANSACTION T1
         INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
@@ -668,6 +676,7 @@ BEGIN
 END
 GO
 
+-- Made by Jisu
 -- Insert Employee
 CREATE OR ALTER PROCEDURE Ins_Employee
     @Ins_EmpFName            VARCHAR(50),
@@ -695,6 +704,7 @@ DECLARE @EmployeeTypeID INT
     END
 GO
 
+-- Made by Jisu and Tom
 -- Insert sproc order
 CREATE OR ALTER PROC Ins_PopulateOrder
 @OrderDate DATETIME,
@@ -846,7 +856,7 @@ BEGIN
     DECLARE @Run INT = 1
     WHILE @Run <= @NumPackages
         BEGIN
-            DECLARE @RandomOrderProductID VARCHAR(100) = (
+            DECLARE @RandomOrderProductID INT = (
                 SELECT TOP 1 Order_ProductID
                 FROM tblORDER_PRODUCT
                 ORDER BY NEWID()
@@ -859,7 +869,7 @@ BEGIN
                 WHERE Order_ProductID = @RandomOrderProductID
             )
 
-            DECLARE @RandomOrderID VARCHAR(50) = (
+            DECLARE @RandomOrderID INT = (
                 SELECT OrderID
                 FROM tblORDER_PRODUCT
                 WHERE Order_ProductID = @RandomOrderProductID
@@ -885,7 +895,7 @@ BEGIN
                 WHERE OrderID = @RandomOrderID
             )
 
-            DECLARE @RandomOrderEmpDOB VARCHAR(50) = (
+            DECLARE @RandomOrderEmpDOB DATE = (
                 SELECT EmployeeDOB
                 FROM tblORDER
                 JOIN tblEMPLOYEE ON tblORDER.EmployeeID = tblEMPLOYEE.EmployeeID
@@ -906,7 +916,7 @@ BEGIN
                 WHERE OrderID = @RandomOrderID
             )
 
-            DECLARE @RandomOrderCustDOB VARCHAR(50) = (
+            DECLARE @RandomOrderCustDOB DATE = (
                 SELECT CustomerDOB
                 FROM tblORDER
                 JOIN tblCUSTOMER ON tblORDER.CustomerID = tblCUSTOMER.CustomerID
@@ -975,6 +985,7 @@ GO
 -- Populating Data
 ---------------------------------------------------------------------------------------------------
 -- populate priorities
+-- Made by Kha
 INSERT INTO tblPRIORITY (PriorityName, PriorityDesc)
 VALUES
     ('1A - LTCF & Healthcare Personnel', 'Long term care facility members and authorized front-line healthcare workers'),
@@ -1041,6 +1052,7 @@ END
 GO
 
 -- Populate addresses
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 PopulateAddresses
 @NumberOfAddresses INTEGER
@@ -1105,6 +1117,7 @@ END
 GO
 
 -- populate customers
+-- Made by Kha
 CREATE OR ALTER PROCEDURE
 PopulateCustomers
 @NumberOfCustomers INT
@@ -1204,10 +1217,13 @@ WHILE @Run <= @NumberOfCustomers
 END
 GO
 
+-- Made by Jisu
 -- populate employees
 INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
 SELECT TOP 10000 Emp_FName, Emp_LName, Emp_DOB, 2
 FROM tblRAW_EmpData
+
+UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Full-Time')
 
 UPDATE tblEMPLOYEE
 SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Executive')
@@ -1225,8 +1241,6 @@ UPDATE tblEMPLOYEE
 SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Temporary')
 WHERE EmployeeID LIKE '%84'
 
-UPDATE tblEMPLOYEE SET EmployeeTypeID = (SELECT EmployeeTypeID FROM tblEMPLOYEE_TYPE WHERE EmployeeTypeName = 'Full-Time')
-
 SELECT COUNT(*), ET.EmployeeTypeName FROM tblEMPLOYEE E
         JOIN tblEMPLOYEE_TYPE ET ON E.EmployeeTypeID = ET.EmployeeTypeID
 GROUP BY ET.EmployeeTypeName
@@ -1235,6 +1249,7 @@ IF EXISTS (SELECT TOP 1 * FROM tblRAW_EmpData)
      DROP TABLE tblRAW_EmpData
 GO
 
+-- Made by Jisu and Kha
 -- generate tracking num
 CREATE OR ALTER PROCEDURE GenerateTrackingNumber
 @Output VARCHAR(12) OUTPUT
@@ -1257,6 +1272,7 @@ EXEC GenerateTrackingNumber @Output = @TrackingNum OUTPUT
 PRINT (@TrackingNum)
 GO
 
+-- Made by Jisu
 -- populate data for shipment
 CREATE OR ALTER PROCEDURE PopulateShipment
 @NumsShipment INT
@@ -1298,6 +1314,7 @@ WHILE @NumsShipment > 0
     END
 GO
 
+-- Made by Jisu and Tom
 -- populate order and order product
 CREATE OR ALTER PROCEDURE PopulateOrder
 @NumsOrder INT
@@ -1463,6 +1480,7 @@ GO
 -- Business Rules
 ---------------------------------------------------------------------------------------------------
 -- Cities must be in the correct state for addresses
+-- Made by Kha
 CREATE FUNCTION fn_AddressCityMustBeInState()
 RETURNS INTEGER
 AS
@@ -1489,6 +1507,7 @@ CHECK (dbo.fn_AddressCityMustBeInState() = 0)
 GO
 
 -- Only 50 states can exist
+-- Made by Kha
 CREATE FUNCTION fn_50StatesMaxAndNoDupes()
 RETURNS INTEGER
 AS
@@ -1519,6 +1538,7 @@ ADD CONSTRAINT CK_50StatesMax
 CHECK (dbo.fn_50StatesMaxAndNoDupes() = 0)
 GO
 
+-- Made by Jisu
 -- Order date should be earlier than shipping date
 CREATE OR ALTER FUNCTION fn_OrderDateEarlierThanShippingDate()
 RETURNS INTEGER
@@ -1544,6 +1564,7 @@ ADD CONSTRAINT CK_OrderDateEarlierThanShippingDate
 CHECK (dbo.fn_OrderDateEarlierThanShippingDate() = 0)
 GO
 
+-- Made by Jisu
 -- Employee with less than 21 years old should not be full-time
 CREATE OR ALTER FUNCTION fn_EmployeeMustBeOlder21ForFullTime()
 RETURNS INTEGER
@@ -1625,6 +1646,7 @@ GO
 -- Computed Columns
 ---------------------------------------------------------------------------------------------------
 -- Number of address lines
+-- Made by Kha
 CREATE FUNCTION fn_NumAddressLines(@PK INT)
 RETURNS INT
 AS
@@ -1655,6 +1677,7 @@ ADD NumAddressLines AS (dbo.fn_NumAddressLines(AddressID))
 GO
 
 -- Customer age
+-- Made by Kha
 CREATE FUNCTION fn_CustomerAge(@PK INT)
 RETURNS INT
 AS
@@ -1674,6 +1697,7 @@ GO
 
 
 -- Number of Residents in an Address Household
+-- Made by Kha
 CREATE FUNCTION fn_NumberInHouseholdWithHighPriority(@PK INT)
 RETURNS INT
 AS
@@ -1698,7 +1722,7 @@ ADD NumberHighPriorityPeople AS (dbo.fn_NumberInHouseholdWithHighPriority(Addres
 GO
 
 --  Total order in each state in the U.S.
-
+-- Made by Jisu
 CREATE OR ALTER FUNCTION FN_TotalOrderStates(@PK INT)
 RETURNS INT
 AS
@@ -1722,6 +1746,7 @@ ADD TototalOrder AS (dbo.FN_TotalOrderStates (StateID))
 GO
 
 --  Total order of each product
+-- Made by Jisu
 CREATE OR ALTER FUNCTION FN_TotalOrderEachProduct(@PK INT)
 RETURNS INT
 AS
@@ -1789,6 +1814,7 @@ GO
 -- Complex Queries (Views)
 ---------------------------------------------------------------------------------------------------
 -- Show customers grouped by priority and their total counts
+-- Made by Kha
 CREATE OR ALTER VIEW CustomerPriorityCounts AS
 SELECT
     (
@@ -1829,6 +1855,7 @@ GROUP BY
     )
 GO
 
+-- Made by Kha
 CREATE OR ALTER VIEW NumNonPriorityHouseholdsRanking AS
 SELECT RANK() OVER(ORDER BY COUNT(*) DESC) AS Rank, tblSTATE.StateName AS State, COUNT(*) AS Count
 FROM tblADDRESS
@@ -1845,10 +1872,11 @@ GROUP BY tblADDRESS.StateID, tblSTATE.StateName
 GO
 
 -- Ranking 1 - 50 orders by states and nums of customer
-CREATE VIEW vwTopOrderbyStates
+-- Made by Jisu
+CREATE OR ALTER VIEW vwTopOrderbyStates
 AS
-SELECT S.StateID, S.StateName, COUNT(O.CustomerID) AS TotalNumsCustomers ,SUM(OP.Quantity) AS TotalProductOrders,
-RANK() OVER (ORDER BY SUM(OP.Quantity) DESC) AS RANK
+SELECT S.StateID, S.StateName, COUNT(O.CustomerID) AS TotalNumsCustomers ,COUNT(O.OrderID) AS TotalProductOrders,
+RANK() OVER (ORDER BY COUNT(O.OrderID) DESC) AS RANK
 FROM tblSTATE S
     JOIN tblCITY C ON S.StateID = C.StateID
     JOIN tblADDRESS A ON C.CityID = A.CityID
@@ -1858,15 +1886,20 @@ FROM tblSTATE S
     GROUP BY S.StateID, S.StateName
 GO
 
-
+-- TOP 10 MOST POPULAR PRODCUT 
+-- Made by Jisu
 CREATE OR ALTER VIEW vwTheMostTop10PopularProduct
 AS
+<<<<<<< HEAD
 SELECT TOP 10 O.OrderID, P.ProductName, SUM(OP.Quantity) AS TotalOrderProduct
+=======
+SELECT TOP 10 P.ProductID, P.ProductName, COUNT(O.OrderID) AS TotalOrderProduct
+>>>>>>> 44d06a0b04d7b2273c64c6972177f27d8e9d614b
 FROM tblORDER O
     JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
     JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
-    GROUP BY O.OrderID, P.ProductName
-    ORDER BY SUM(OP.Quantity) DESC
+    GROUP BY P.ProductID, P.ProductName
+    ORDER BY COUNT(O.OrderID) DESC
 GO
 
 -- Tom
