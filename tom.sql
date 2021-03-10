@@ -427,37 +427,13 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- Ignore: Debug Code
 ---------------------------------------------------------------------------------------------------
-SELECT * FROM tblDETAIL
-SELECT * FROM tblSUPPLIER
-DELETE FROM tblSUPPLIER
-DBCC CHECKIDENT ('tblPACKAGE', RESEED, 1)
-TRUNCATE TABLE tblCUSTOMER
+--TRUNCATE TABLE tblCUSTOMER
+--DBCC CHECKIDENT ('tblPACKAGE', RESEED, 1)
+--TRUNCATE TABLE tblCUSTOMER
 
-DELETE TOP (SELECT COUNT(*) FROM tblCUSTOMER) FROM tblCUSTOMER
+--ALTER TABLE tblPACKAGE
+--ADD FOREIGN KEY (Order_ProductID) REFERENCES tblORDER_PRODUCT(Order_ProductID);
 
-SELECT * FROM tblORDER_PRODUCT
-
-ALTER TABLE tblORDER
-ADD FOREIGN KEY (CustomerID) REFERENCES tblCUSTOMER(CustomerID);
-
-ALTER TABLE tblORDER_PRODUCT
-ADD FOREIGN KEY (ProductID) REFERENCES tblPRODUCT(ProductID);
-
-
-ALTER TABLE tblPACKAGE
-ADD FOREIGN KEY (Order_ProductID) REFERENCES tblORDER_PRODUCT(Order_ProductID);
-
-SELECT * FROM tblCUSTOMER
-SELECT * FROM tblADDRESS
-
-ALTER TABLE tblPACKAGE
-ADD FOREIGN KEY (Order_ProductID) REFERENCES tblORDER_PRODUCT(Order_ProductID);
-
-SELECT @@SPID AS CurrentSPID
-SELECT *
-FROM sys. dm_exec_sessions
-
-kill 62
-
-
-TRUNCATE TABLE tblCUSTOMER
+--SELECT @@SPID AS CurrentSPID
+--SELECT *
+--FROM sys. dm_exec_sessions
