@@ -179,7 +179,7 @@ GO
 ---------------------------------------------------------------------------------------------------
 -- GetID Stored Procedure
 ---------------------------------------------------------------------------------------------------
--- Tom
+-- Made by Tom
 CREATE OR ALTER PROC GetCustomerTypeID
 @_CustomerTypeName VARCHAR(50),
 @_Out INT OUTPUT
@@ -442,7 +442,7 @@ INSERT INTO tblCARRIER(CarrierName)
 VALUES('UPS'),('USPS'),('DHL'),('FedEx')
 GO
 
--- Tom
+-- Made by Tom
 -- The data below is taken from https://en.wikipedia.org/wiki/COVID-19_vaccine
 IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
 	INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc) VALUES
@@ -454,7 +454,7 @@ IF NOT EXISTS (SELECT TOP 1 * FROM tblSUPPLIER)
 	('Moderna', 'On par with Pfizer, and made from United States.'),
 	('Johnson & Johnson', 'This is the new one from United States and Netherlands.')
 
--- Tom
+-- Made by Tom
 IF NOT EXISTS (SELECT TOP 1 * FROM tblDETAIL)
 	INSERT INTO tblDETAIL (DetailName, DetailDesc) VALUES
 	('Minimum Temperature', 'Minimum temperature in celsius that the product can withstand.'),
@@ -462,7 +462,7 @@ IF NOT EXISTS (SELECT TOP 1 * FROM tblDETAIL)
 	('Recommended Temperature', 'Recommended temperature in celsius for storing the product'),
 	('Weight', 'Weight in grams for a single product unit.')
 
--- Tom
+-- Made by Tom
 IF NOT EXISTS (SELECT TOP 1 * FROM tblCUSTOMER_TYPE)
 	INSERT INTO tblCUSTOMER_TYPE (CustomerTypeName) VALUES
 	('Hospital'), ('Clinic'), ('Household'), ('Individual'), ('Federal Institution'),
@@ -704,7 +704,7 @@ DECLARE @EmployeeTypeID INT
     END
 GO
 
--- Made by Jisu and Tom
+-- Made by Jisu and Made by Tom
 -- Insert sproc order
 CREATE OR ALTER PROC Ins_PopulateOrder
 @OrderDate DATETIME,
@@ -762,7 +762,7 @@ AS
 	COMMIT TRAN T1
 GO
 
--- Tom
+-- Made by Tom
 CREATE OR ALTER PROC Ins_Supplier
 @SupplierName VARCHAR(50),
 @SupplierDesc VARCHAR(1000),
@@ -788,7 +788,7 @@ AS
 	COMMIT TRAN T1
 GO
 
--- Tom
+-- Made by Tom
 CREATE OR ALTER PROC Ins_Product
 @ProductName VARCHAR(50),
 @ProductDesc VARCHAR(1000),
@@ -814,7 +814,7 @@ AS
 	COMMIT TRAN T1
 GO
 
--- Tom
+-- Made by Tom
 CREATE OR ALTER PROC Ins_ProductDetail
 @ProductName VARCHAR(50),
 @DetailName VARCHAR(50),
@@ -1314,7 +1314,7 @@ WHILE @NumsShipment > 0
     END
 GO
 
--- Made by Jisu and Tom
+-- Made by Jisu and Made by Tom
 -- populate order and order product
 CREATE OR ALTER PROCEDURE PopulateOrder
 @NumsOrder INT
@@ -1590,7 +1590,7 @@ ADD CONSTRAINT CK_EmployeeMustBeOlder21ForFullTime
 CHECK (dbo.fn_EmployeeMustBeOlder21ForFullTime() = 0)
 GO
 
--- Tom
+-- Made by Tom
 -- A customer type 'Individual' below the age of 30, can only order 1 quantity  of a product at a time.
 CREATE OR ALTER FUNCTION fn_HasMoreThan1ProductQuanityPerOrder()
 RETURNS INT
@@ -1615,7 +1615,7 @@ ADD CONSTRAINT ck_HasMoreThan1ProductQuanityPerOrder
 CHECK (dbo.fn_HasMoreThan1ProductQuanityPerOrder() = 0)
 GO
 
--- Tom
+-- Made by Tom
 -- A customer type 'Individual' and 'Household' can not order a product that has a minimum storage temperature below -10 celsius.
 CREATE OR ALTER FUNCTION fn_HasProductMinTempBelowNegative10()
 RETURNS INT
@@ -1763,7 +1763,7 @@ ALTER TABLE tblORDER_PRODUCT
 ADD TotalOrderProduct AS (dbo.FN_TotalOrderEachProduct (ProductID))
 GO
 
--- Tom
+-- Made by Tom
 -- Number of orders for each supplier
 CREATE OR ALTER FUNCTION fn_OrderCountPerSupplier(@PK INT)
 RETURNS INT
@@ -1787,7 +1787,7 @@ BEGIN
 END
 GO
 
--- Tom
+-- Made by Tom
 -- Number of employees for each customer type
 CREATE OR ALTER FUNCTION fn_CountEmployeePerCustomerType(@PK INT)
 RETURNS INT
@@ -1886,15 +1886,11 @@ FROM tblSTATE S
     GROUP BY S.StateID, S.StateName
 GO
 
--- TOP 10 MOST POPULAR PRODCUT 
+-- TOP 10 MOST POPULAR PRODCUT
 -- Made by Jisu
 CREATE OR ALTER VIEW vwTheMostTop10PopularProduct
 AS
-<<<<<<< HEAD
-SELECT TOP 10 O.OrderID, P.ProductName, SUM(OP.Quantity) AS TotalOrderProduct
-=======
 SELECT TOP 10 P.ProductID, P.ProductName, COUNT(O.OrderID) AS TotalOrderProduct
->>>>>>> 44d06a0b04d7b2273c64c6972177f27d8e9d614b
 FROM tblORDER O
     JOIN tblORDER_PRODUCT OP ON O.OrderID = OP.OrderID
     JOIN tblPRODUCT P ON OP.ProductID = P.ProductID
@@ -1902,7 +1898,7 @@ FROM tblORDER O
     ORDER BY COUNT(O.OrderID) DESC
 GO
 
--- Tom
+-- Made by Tom
 -- The top 1 supplier in each state, that received the most number of orders from.
 CREATE OR ALTER VIEW vw_Top1SupplierInEachStateByNumberOfOrders
 AS
@@ -1927,7 +1923,7 @@ AS
 	WHERE TopNumberOfOrdersRank = 1
 GO
 
--- Tom
+-- Made by Tom
 -- The lowest temperature that an employee had to deal with.
 CREATE OR ALTER VIEW vw_EmployeeMinTemp
 AS
