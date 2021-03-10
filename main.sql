@@ -852,7 +852,7 @@ BEGIN
     DECLARE @Run INT = 1
     WHILE @Run <= @NumPackages
         BEGIN
-            DECLARE @RandomOrderProductID VARCHAR(100) = (
+            DECLARE @RandomOrderProductID INT = (
                 SELECT TOP 1 Order_ProductID
                 FROM tblORDER_PRODUCT
                 ORDER BY NEWID()
@@ -865,7 +865,7 @@ BEGIN
                 WHERE Order_ProductID = @RandomOrderProductID
             )
 
-            DECLARE @RandomOrderID VARCHAR(50) = (
+            DECLARE @RandomOrderID INT = (
                 SELECT OrderID
                 FROM tblORDER_PRODUCT
                 WHERE Order_ProductID = @RandomOrderProductID
@@ -891,7 +891,7 @@ BEGIN
                 WHERE OrderID = @RandomOrderID
             )
 
-            DECLARE @RandomOrderEmpDOB VARCHAR(50) = (
+            DECLARE @RandomOrderEmpDOB DATE = (
                 SELECT EmployeeDOB
                 FROM tblORDER
                 JOIN tblEMPLOYEE ON tblORDER.EmployeeID = tblEMPLOYEE.EmployeeID
@@ -912,7 +912,7 @@ BEGIN
                 WHERE OrderID = @RandomOrderID
             )
 
-            DECLARE @RandomOrderCustDOB VARCHAR(50) = (
+            DECLARE @RandomOrderCustDOB DATE = (
                 SELECT CustomerDOB
                 FROM tblORDER
                 JOIN tblCUSTOMER ON tblORDER.CustomerID = tblCUSTOMER.CustomerID
