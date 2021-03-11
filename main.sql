@@ -490,16 +490,25 @@ EXEC GetCityID
 @C_Name = @CityName,
 @C_ID = @CityID OUTPUT
 IF @CityID IS NULL
-    THROW 55000, 'City does not exist', 1
+BEGIN
+    PRINT 'CityID is null';
+    THROW 55000, 'City does not exist', 1;
+END
 
 EXEC GetStateID
 @S_Name = @StateName,
 @S_ID = @StateID OUTPUT
 IF @StateID IS NULL
-    THROW 55001, 'State does not exist', 1
+BEGIN
+    PRINT 'StateID is null';
+    THROW 55001, 'State does not exist', 1;
+END
 
 IF (SELECT StateID FROM tblCITY WHERE CityID = @CityID) <> @StateID
-    THROW 55002, 'This city is not in this state', 1
+BEGIN
+    PRINT 'Check CityID Again..';
+    THROW 55002, 'This city is not in this state', 1;
+END
 
 BEGIN TRANSACTION
 INSERT INTO tblADDRESS(AddressLine1, AddressLine2, Zip, CityID, StateID)
@@ -561,14 +570,20 @@ EXEC GetPriorityID
 @P_Name = @Priority,
 @P_ID = @PriorityID OUTPUT
 IF @PriorityID IS NULL
-    THROW 58000, 'Priority does not exist', 1
+BEGIN
+    PRINT 'PriorityID is null';
+    THROW 58000, 'Priority does not exist', 1;
+END
 
 -- Get Customer Type ID
 EXEC GetCustomerTypeID
 @_CustomerTypeName = @CustomerType,
 @_OUT = @CustomerTypeID OUTPUT
 IF @CustomerTypeID IS NULL
+BEGIN
+    PRINT 'CustomerTypeID is null';
     THROW 59000, 'Customer type does not exist', 1
+END
 
 BEGIN TRANSACTION
 INSERT INTO tblCUSTOMER (CustomerFname, CustomerLname, CustomerDOB, CustomerEmail, AddressID, PriorityID, CustomerTypeID)
@@ -597,14 +612,20 @@ EXEC GetShipmentTypeID
 @ST_ID = @ShipmentTypeID OUTPUT
 
     IF @ShipmentTypeID IS NULL
+    BEGIN
+        PRINT 'ShipmentTypeID is null';
         THROW 50207, '@ShipmentTypeID is not found', 1;
+    END
 
 EXEC GetCarrierID
 @CR_Name = @InsSP_CarrierName,
 @CR_ID = @CarrierID OUTPUT
 
     IF @CarrierID IS NULL
+    BEGIN
+        PRINT 'CarrierID is null';
         THROW 50300, '@CarrierID is not found', 1;
+    END
 
     BEGIN TRANSACTION T1
         INSERT INTO tblSHIPMENT(TrackingNumber, ShippingDate, ShipmentTypeID, CarrierID)
@@ -664,7 +685,10 @@ BEGIN
     @SP_ID = @ShipmentID OUTPUT
 
     IF @ShipmentID IS NULL
+    BEGIN
+        PRINT 'ShipmentID is null';
         THROW 60000, 'Shipment does not exist', 1
+    END
 
     BEGIN TRANSACTION
     INSERT INTO tblPACKAGE(Order_ProductID, ShipmentID)
@@ -692,7 +716,10 @@ DECLARE @EmployeeTypeID INT
     @ET_ID = @EmployeeTypeID OUTPUT
 
     IF @EmployeeTypeID IS NULL
+    BEGIN
+        PRINT 'EmployeeTypeID is null';
         THROW 50209, '@EmployeeTypeID is not found', 1;
+    END
 
     BEGIN TRANSACTION T1
         INSERT INTO tblEMPLOYEE(EmployeeFName, EmployeeLName, EmployeeDOB, EmployeeTypeID)
@@ -725,7 +752,10 @@ AS
 	@C_ID = @CustomerID OUTPUT
 
 	IF @CustomerID IS NULL
+    BEGIN
+        PRINT 'CustomerID is null';
 		THROW 54000, 'Customer not found', 1;
+    END
 
 	DECLARE @EmployeeID INT
 	EXEC GetEmployeeID
@@ -735,7 +765,10 @@ AS
 	@E_ID = @EmployeeID OUTPUT
 
 	IF @EmployeeID IS NULL
+    BEGIN
+        PRINT 'EmployeeID is null';
 		THROW 54001, 'Employee not found', 1;
+    END
 
 	DECLARE @ProductID INT
 	EXEC GetProductID
@@ -743,7 +776,10 @@ AS
 	@_Out = @ProductID OUTPUT
 
 	IF @ProductID IS NULL
+    BEGIN 
+        PRINT 'ProductID is null';
 		THROW 54002, 'Product not found', 1;
+    END
 
 	BEGIN TRAN T1
 		INSERT INTO tblORDER (OrderDate, CustomerID, EmployeeID)
@@ -774,7 +810,10 @@ AS
 	@C_ID = @CityID OUTPUT
 
 	IF @CityID IS NULL
+    BEGIN 
+        PRINT 'CityID is null';
 		THROW 51000, 'City not found', 1;
+    END
 
 	BEGIN TRAN T1
 		INSERT INTO tblSUPPLIER (SupplierName, SupplierDesc, SupplierID)
@@ -800,7 +839,10 @@ AS
 	@_Out = @SupplierID OUTPUT
 
 	IF @SupplierID IS NULL
+    BEGIN
+        PRINT 'SupplierID is null';
 		THROW 52000, 'Supplier not found', 1;
+    END
 
 	BEGIN TRAN T1
 		INSERT INTO tblPRODUCT (ProductName, ProductDesc, SupplierID)
@@ -826,7 +868,10 @@ AS
 	@_Out = @ProductID OUTPUT
 
 	IF @ProductID IS NULL
+    BEGIN
+        PRINT 'ProductID is null';
 		THROW 53000, 'Product not found', 1;
+    END
 
 	DECLARE @DetailID INT
 	EXEC GetDetailID
@@ -834,7 +879,10 @@ AS
 	@_Out = @DetailID OUTPUT
 
 	IF @DetailName IS NULL
+    BEGIN 
+        PRINT 'DetailName is null';
 		THROW 53001, 'Detail not found', 1;
+    END
 
 	BEGIN TRAN T1
 		INSERT INTO tblPRODUCT_DETAIL (ProductID, DetailID, [Value])
