@@ -322,11 +322,12 @@ DECLARE @ShipmentTypeID INT, @CarrierID INT
 
 EXEC GetShipmentTypeID
 @ST_Name = @SP_ShipmentTypeName,
-@ST_ID = @ShipmentTypeID
+@ST_ID = @ShipmentTypeID OUTPUT
+
 
 EXEC GetCarrierID
 @CR_Name = @SP_CarrierName,
-@CR_ID = @CarrierID
+@CR_ID = @CarrierID OUTPUT
 
 SET @SP_ID = (
     SELECT ShipmentID
@@ -1508,16 +1509,16 @@ IF (SELECT COUNT(*) FROM tblPRODUCT) <> 50
 EXEC PopulateCitiesAndStates
 
 EXEC PopulateAddresses
-@NumberOfAddresses = 1000
+@NumberOfAddresses = 5
 
 EXEC PopulateCustomers
-@NumberOfCustomers = 10000
+@NumberOfCustomers = 5
 
 EXEC PopulateShipment
 @NumsShipment = 5
 
 EXEC PopulateOrder
-@NumsOrder = 1000
+@NumsOrder = 5
 
 EXEC PopulatePackages
 @NumPackages = 5
@@ -1543,7 +1544,6 @@ DECLARE @RET INTEGER = 0
 	)
 	BEGIN
 		SET @RET = 1;
-        THROW 60000, 'The city in all addresses must be associated with the correct state', 1
 	END
 RETURN @RET
 END
@@ -1575,7 +1575,6 @@ DECLARE @RET INTEGER = 0
     ) > 0
 	BEGIN
 		SET @RET = 1;
-        THROW 60001, 'There can only be 50 unique states', 1
 	END
 RETURN @RET
 END
